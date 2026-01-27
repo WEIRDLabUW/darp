@@ -1,0 +1,35 @@
+model_config:
+  act_horizon: 1
+  assume_io_size: true
+  batch_norm: true
+  darp: true
+  dropout_rate: 0.0
+  hidden_dims:
+  - 256
+  - 256
+  - 256
+  obs_horizon: 1
+  optimizer: 0
+  retrieval_config:
+    decay_rate: -2.8357517686503106
+    final_neighbors_ratio: 0.6099563312935198
+    k: 1308
+    lookback: 9
+    method: knn
+    monolithic: False
+    include_action: True
+  scale: true
+  type: mlp
+train_config:
+  batch_size: 32
+  force_retrain: True
+  #epochs: 1000
+  epochs: 10
+  model_name: darp_close_door_baseline
+  optimizers:
+    0:
+      lr: 0.01
+      weight_decay: 0.000001
+
+#(02:40:01 study.py@1161 INFO) Trial 252 finished with value: 0.45 and parameters: {'epochs': 10, 'k': 1308, 'lookback': 9, 'decay_rate': -2.8357517686503106, 'final_neighbors_ratio': 0.6099563312935198}. Best is trial 252 with value: 0.45.
+

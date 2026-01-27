@@ -1,0 +1,12 @@
+seed: 42
+name: "hopper-expert-v2"
+demo_pkl: "data/hopper-expert-v2_1.pkl"
+type: 'state'
+#val_cfg: "config/env/hopper_val.yml"
+# rot_indices:
+#   - 1
+#   - 2
+#   - 3
+#   - 4
+cams:
+        - "track"

@@ -1,0 +1,29 @@
+train_config:
+  epochs: 120
+  batch_size: 32
+  cond_force_retrain: True
+  model_name: "hopper_bc"
+  optimizers:
+    0:
+      lr: 0.001
+      weight_decay: 0.00001
+
+model_config:
+  type: "mlp"
+  scale: True
+  obs_horizon: 1
+  act_horizon: 1
+  hidden_dims:
+  - 128
+  - 128
+  - 128
+  dropout_rate: 0.0
+  batch_norm: True
+  assume_io_size: True
+  optimizer: 0
+
+#load_resnet: False
+
+# (15:14:41 train_bc.py@675 INFO) Evaluating epoch 120...
+# (15:14:46 nn_eval.py@465 INFO) mean 2313.65, std 1021.72
+

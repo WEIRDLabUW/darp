@@ -1,0 +1,29 @@
+model_config:
+  act_horizon: 16
+  assume_io_size: true
+  obs_horizon: 2
+  optimizer: 0
+  scale: true
+  type: diffusion
+  #noise_loss: False
+  darp: true
+  num_train_steps: 100
+  num_inference_steps: 20
+  retrieval_config:
+    decay_rate: -0.8323663592969637
+    final_neighbors_ratio: 0.6477953667818332
+    k: 42
+    lookback: 19
+    method: knn
+train_config:
+  batch_size: 32
+  force_retrain: True
+  epochs: 150
+  model_name: darp_stack
+  loss_fn: "loss_from_forward"
+  optimizers:
+    0:
+      lr: 0.0001
+      weight_decay: 0.00001
+# 50 Trials
+#'k': 42, 'lookback': 19, 'decay_rate': -0.8323663592969637, 'final_neighbors_ratio': 0.6477953667818332

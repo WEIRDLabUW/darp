@@ -1,0 +1,32 @@
+model_config:
+  act_horizon: 1
+  assume_io_size: true
+  batch_norm: true
+  darp: true
+  dropout_rate: 0.0
+  hidden_dims:
+  - 256
+  - 256
+  - 256
+  obs_horizon: 1
+  optimizer: 0
+  retrieval_config:
+    decay_rate: -0.6600833911421093
+    final_neighbors_ratio: 0.4130011536375388
+    k: 598
+    lookback: 49
+    method: knn
+  scale: true
+  type: mlp
+train_config:
+  batch_size: 32
+  force_retrain: True
+  epochs: 135
+  model_name: thread_darp_baseline
+  optimizers:
+    0:
+      lr: 0.01
+      weight_decay: 0.000001
+
+#[I 2025-08-22 02:51:59,827] Trial 177 finished with value: 0.63 and parameters: {'epochs': 135, 'k': 598, 'lookback': 49, 'decay_rate': -0.6600833911421093, 'final_neighbors_ratio': 0.4130011536375388}. Best is trial 177 with value: 0.63.
+

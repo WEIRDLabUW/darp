@@ -1,0 +1,10 @@
+demo_pkl: "data/close_drawer/10.pkl"
+type: 'state'
+demo_hdf5: "data/close_drawer/demo.hdf5"
+robosuite: True
+name: CloseDrawer
+#cams:
+  #- robot0_agentview_center
+  # - robot0_eye_in_hand
+
+ep_length: 200

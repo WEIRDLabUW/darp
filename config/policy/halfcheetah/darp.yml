@@ -1,0 +1,35 @@
+model_config:
+  act_horizon: 1
+  assume_io_size: true
+  batch_norm: true
+  darp: true
+  dropout_rate: 0.0
+  hidden_dims:
+  - 256
+  - 256
+  - 256
+  obs_horizon: 1
+  optimizer: 0
+  retrieval_config:
+    decay_rate: -2.999633277128543
+    final_neighbors_ratio: 0.6498414382889691
+    k: 368
+    lookback: 26
+    method: knn
+  scale: true
+  type: mlp
+train_config:
+  batch_size: 32
+  force_retrain: True
+  epochs: 35
+  model_name: halfcheetah_darp_baseline
+  optimizers:
+    0:
+      lr: 0.01
+      weight_decay: 0.000001
+
+# (18:00:15 nn_eval.py@498 INFO) mean 5515.41, std 4218.88
+
+#(2025, 8, 26, 22, 42, 10, 230264), params={'epochs': 35, 'k': 368, 'lookback': 26, 'decay_rate': -2.999633277128543, 'final_neighbors_ratio': 0.6498414382889691}, user_attrs={}, system_attrs={}, intermediate_values={}, distributions={'epochs': IntDistribution(high=500, log=False, low=5, step=1), 'k': IntDistribution(high=1999, log=False, low=10, step=1), 'lookback': IntDistribution(high=50, log=False, low=2, step=1), 'decay_rate': FloatDistribution(high=0.0, log=False, low=-3.0, step=None), 'final_neighbors_ratio': FloatDistribution(high=1.0, log=False, low=0.05, step=None)}, trial_id=930, value=None)
+
+

@@ -1,0 +1,6 @@
+seed: 42
+name: "ant-expert-v2"
+demo_pkl: "data/ant-expert-v2-clean_2.pkl"
+type: 'state'
+cams:
+        - "track"

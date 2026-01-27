@@ -1,0 +1,31 @@
+model_config:
+  act_horizon: 1
+  assume_io_size: true
+  batch_norm: true
+  darp: true
+  dropout_rate: 0.0
+  hidden_dims:
+  - 256
+  - 256
+  - 256
+  obs_horizon: 1
+  optimizer: 0
+  retrieval_config:
+    decay_rate: -0.5256205418343101
+    final_neighbors_ratio: 0.1296895441599067
+    k: 1916
+    lookback: 44
+    method: knn
+  scale: true
+  type: mlp
+train_config:
+  batch_size: 32
+  force_retrain: True
+  epochs: 113
+  model_name: square_darp_baseline
+  optimizers:
+    0:
+      lr: 0.01
+      weight_decay: 0.000001
+
+# Best trial: FrozenTrial(number=566, state=TrialState.COMPLETE, values=[0.62], datetime_start=datetime.datetime(2025, 8, 27, 21, 47, 32, 692747), datetime_complete=datetime.datetime(2025, 8, 27, 21, 49, 51, 456476), params={'epochs': 113, 'k': 1916, 'lookback': 44, 'decay_rate': -0.5256205418343101, 'final_neighbors_ratio': 0.1296895441599067}, user_attrs={}, system_attrs={}, intermediate_values={}, distributions={'epochs': IntDistribution(high=500, log=False, low=5, step=1), 'k': IntDistribution(high=15319, log=False, low=10, step=1), 'lookback': IntDistribution(high=50, log=False, low=2, step=1), 'decay_rate': FloatDistribution(high=0.0, log=False, low=-3.0, step=None), 'final_neighbors_ratio': FloatDistribution(high=1.0, log=False, low=0.05, step=None)}, trial_id=567, value=None)

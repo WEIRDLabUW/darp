@@ -1,0 +1,55 @@
+name: nearest-sequence
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10.12
+  - pip=22.0.2
+  - numpy=1.26.4
+  - Cython=0.29.32
+  - setuptools=65.5.0
+  - wheel=0.38.4
+  - cmake=3.30.5
+  # These are for mujoco-py, not necessary if you have sudo on your machine and can install without conda
+  - glew
+  - mesalib
+  - patchelf
+
+  - pip:
+    - tqdm==4.66.5
+    - tabulate==0.9.0
+    - torch==2.4.1
+    - gym==0.19.0
+    - matplotlib==3.7.2
+    - diffusers==0.30.0
+    - pygame==2.5.0
+    - PyYAML==6.0.1
+    - d4rl==1.1
+    - tensorboard==2.19.0
+    - scipy==1.11.4
+    - faiss-cpu==1.9.0
+    - scikit-optimize==0.10.2
+    - numpy==1.26.4
+    - numba==0.60.0
+    - scikit-learn==1.6.0 
+    - mediapy==1.2.2
+    - tensorflow==2.19.0
+    - tensorflow_datasets==4.9.8
+    - transformers==4.44.0
+    - timm==1.0.9
+    # Just for Push T
+    - pymunk==6.2.1
+    - Shapely==1.8.4
+    - opencv-python==4.10.0.84
+    # Just for keypoints
+    - jax==0.5.0
+    - jaxlib==0.5.0
+    # GitHub dependencies
+    - git+https://github.com/aravindr93/mjrl@3871d93763d3b49c4741e6daeaebbc605fe140dc
+    - git+https://github.com/personalrobotics/d3rlpy.git@e89a7da6e4c1020f5cf999346c0ebd32e0bbc7c1#egg=d3rlpy
+    - git+https://github.com/google-deepmind/tapnet
+    - git+https://github.com/rlworkgroup/metaworld.git@84bda2c3bd32fc03bb690d6188b22c7946cdb020
+      #- git+https://github.com/NVlabs/mimicgen.git
+      #- git+https://github.com/ARISE-Initiative/robosuite.git@b9d8d3de5e3dfd1724f4a0e6555246c460407daa
+      #- git+https://github.com/ARISE-Initiative/robomimic.git@d0b37cf214bd24fb590d182edb6384333f67b661
+    - git+https://github.com/ARISE-Initiative/robosuite-task-zoo.git@74eab7f88214c21ca1ae8617c2b2f8d19718a9ed

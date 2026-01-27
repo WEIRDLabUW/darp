@@ -1,0 +1,31 @@
+# Best trial: FrozenTrial(number=362, state=TrialState.COMPLETE, values=[3545.5662406149695], datetime_start=datetime.datetime(2025, 8, 14, 20, 3, 13, 557586), datetime_complete=datetime.datetime(2025, 8, 14, 20, 4, 36, 530549), params={'epochs': 237, 'k': 246, 'lookback': 13, 'decay_rate': -0.7359995486097888, 'final_neighbors_ratio': 0.593485269170173}, user_attrs={}, system_attrs={}, intermediate_values={}, distributions={'epochs': IntDistribution(high=1000, log=False, low=5, step=1), 'k': IntDistribution(high=1000, log=False, low=10, step=1), 'lookback': IntDistribution(high=50, log=False, low=2, step=1), 'decay_rate': FloatDistribution(high=0.0, log=False, low=-1.0, step=None), 'final_neighbors_ratio': FloatDistribution(high=1.0, log=False, low=0.05, step=None)}, trial_id=362, value=None)
+
+model_config:
+  act_horizon: 1
+  assume_io_size: true
+  batch_norm: true
+  darp: true
+  dropout_rate: 0.0
+  hidden_dims:
+  - 128
+  - 128
+  - 128
+  obs_horizon: 1
+  optimizer: 0
+  retrieval_config:
+    decay_rate: -0.7359995486097888
+    final_neighbors_ratio: 0.593485269170173
+    k: 246
+    lookback: 13
+    method: knn
+  scale: true
+  type: mlp
+train_config:
+  batch_size: 32
+  force_retrain: True
+  epochs: 237
+  model_name: darp_hopper_baseline
+  optimizers:
+    0:
+      lr: 0.001
+      weight_decay: 0.00001

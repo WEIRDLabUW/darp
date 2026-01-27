@@ -1,0 +1,11 @@
+demo_pkl: "data/square_task_D0/100_r3m_full.pkl"
+prop_demo_pkl: "data/square_task_D0/100_proprio.pkl"
+act_demo_pkl: "data/square_task_D0/100_actions.pkl"
+type: 'r3m'
+demo_hdf5: "data/square_task_D0/demo.hdf5"
+robosuite: True
+add_proprio: True
+name: Square_D0
+cams:
+  - agentview
+  - robot0_eye_in_hand

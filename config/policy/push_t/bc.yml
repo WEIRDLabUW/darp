@@ -1,0 +1,28 @@
+train_config:
+  epochs: 370
+  # epochs: 3
+  batch_size: 32
+  cond_force_retrain: True
+  model_name: "push_t_bc"
+  optimizers:
+    0:
+      lr: 0.01
+      weight_decay: 0.000001
+
+model_config:
+  type: "mlp"
+  scale: True
+  obs_horizon: 1
+  act_horizon: 1
+  hidden_dims:
+  - 256
+  - 256
+  - 256
+  dropout_rate: 0.0
+  batch_norm: True
+  assume_io_size: True
+  optimizer: 0
+
+# (20:06:04 train_bc.py@708 INFO) New best score 0.47977774706476345 found at epoch 370
+# (07:43:42 get_95_ci.py@29 INFO) CI INFO: mean_score=0.47977774706476345, lower_ci=0.39744788883207804, upper_ci=0.5621076052974489, 0.0823298582326854
+

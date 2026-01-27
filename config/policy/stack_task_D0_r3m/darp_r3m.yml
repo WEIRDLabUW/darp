@@ -1,0 +1,59 @@
+cond_force_retrain: true
+model_config:
+  act_config:
+    demo_pkl: data/stack_task_D0/100_actions.pkl
+    input_len: 7
+    scale: true
+    scale_output: false
+    type: identity
+  darp: true
+  demo_pkl: data/stack_task_D0/100_r3m_full.pkl
+  fusion_config:
+    batch_norm: false
+    demo_pkl: data/stack_task_D0/100_r3m_full.pkl
+    dropout_rate: 0.0
+    hidden_dims:
+    - 1024
+    - 512
+    - 512
+    optimizer: 0
+    output_len: 7
+    scale: true
+    scale_input: false
+    type: mlp
+  prop_config:
+    batch_norm: false
+    demo_pkl: data/stack_task_D0/100_proprio.pkl
+    input_len: 9
+    optimizer: 1
+    scale: true
+    scale_output: false
+    type: identity
+  r3m_config:
+    input_len: 512
+    rgb_height: 224
+    rgb_width: 224
+    scale: false
+    type: identity
+  retrieval_config:
+    decay_rate: -0.4905430936339171
+    final_neighbors_ratio: 0.36987140776760485
+    k: 358
+    lookback: 50
+    method: knn
+  sideload_r3m: true
+  tune: false
+  type: r3m_darp
+train_config:
+  batch_size: 32
+  epochs: 343
+  #epochs: 206
+  force_retrain: true
+  model_name: r3m_darp
+  optimizers:
+    0:
+      lr: 1e-3
+      weight_decay: 1e-5
+
+#[I 2025-08-22 03:48:13,467] Trial 321 finished with value: 0.75 and parameters: {'epochs': 343, 'k': 358, 'lookback': 50, 'decay_rate': -0.4905430936339171, 'final_neighbors_ratio': 0.36987140776760485}. Best is trial 321 with value: 0.75.
+

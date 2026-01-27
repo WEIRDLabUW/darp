@@ -1,0 +1,10 @@
+demo_pkl: "data/turn_on_stove/100.pkl"
+type: 'state'
+demo_hdf5: "data/turn_on_stove/demo.hdf5"
+robosuite: True
+name: TurnOnStove
+#cams:
+  #- robot0_agentview_center
+  # - robot0_eye_in_hand
+
+ep_length: 200

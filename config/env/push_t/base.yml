@@ -1,0 +1,3 @@
+name: "push_t"
+demo_pkl: "data/push_t_parsed.pkl"
+type: 'state'

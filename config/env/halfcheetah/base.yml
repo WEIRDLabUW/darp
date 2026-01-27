@@ -1,0 +1,6 @@
+seed: 42
+name: "halfcheetah-expert-v2"
+demo_pkl: "data/halfcheetah-expert-v2_2.pkl"
+type: 'state'
+cams:
+        - "track"

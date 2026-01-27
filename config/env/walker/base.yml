@@ -1,0 +1,6 @@
+seed: 42
+name: "walker2d-expert-v2"
+demo_pkl: "data/walker2d-expert-v2_1.pkl"
+type: 'state'
+cams:
+        - "track"

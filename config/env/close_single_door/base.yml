@@ -1,0 +1,10 @@
+demo_pkl: "data/close_single_door/100.pkl"
+type: 'state'
+demo_hdf5: "data/close_single_door/demo.hdf5"
+robosuite: True
+name: CloseSingleDoor
+#cams:
+  #- robot0_agentview_center
+  # - robot0_eye_in_hand
+
+ep_length: 200

@@ -1,0 +1,12 @@
+demo_pkl: "data/stack_task_D0/20.pkl"
+#val_demo_pkl: "data/stack_task_D0/50_val.pkl"
+type: 'state'
+demo_hdf5: "data/stack_task_D0/demo.hdf5"
+robosuite: True
+name: Stack_D0
+# reward_shaping: False
+#cams:
+  #- agentview
+  # - robot0_eye_in_hand
+
+ep_length: 200

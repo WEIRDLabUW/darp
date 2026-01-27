@@ -1,0 +1,24 @@
+model_config:
+  act_horizon: 16
+  assume_io_size: true
+  obs_horizon: 2
+  optimizer: 0
+  scale: true
+  type: diffusion
+  #noise_loss: False
+  num_train_steps: 100
+  num_inference_steps: 20
+train_config:
+  batch_size: 32
+  force_retrain: True
+  epochs: 410
+  model_name: dan_stack
+  loss_fn: "loss_from_forward"
+  optimizers:
+    0:
+      lr: 0.0001
+      weight_decay: 0.00001
+
+# 50 Trials
+#(09:58:18 train_bc.py@1064 INFO) New best score 0.44 found at epoch 360
+

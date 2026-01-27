@@ -1,0 +1,19 @@
+#demo_pkl: "data/stack_task_D0/10_r3m.pkl"
+#rgb_demo_pkl: "data/stack_task_D0/100_r3m.pkl"
+demo_pkl: "data/stack_task_D0/100_r3m_full_train.pkl"
+#val_demo_pkl: "data/stack_task_D0/100_r3m_full_val.pkl"
+prop_demo_pkl: "data/stack_task_D0/100_proprio.pkl"
+act_demo_pkl: "data/stack_task_D0/100_actions.pkl"
+#rgb_demo_pkl: "data/stack_task_D0/100_r3m.pkl"
+mixed: False
+
+type: 'r3m'
+demo_hdf5: "data/stack_task_D0/demo.hdf5"
+robosuite: True
+name: Stack_D0
+add_proprio: True
+vae_path: "cond_models/vae.pth"
+cams:
+  - agentview
+  - robot0_eye_in_hand
+#val_cfg: "config/env/stack_task_D0/features_val.yml"

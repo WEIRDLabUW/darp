@@ -1,0 +1,4 @@
+seed: 42
+name: "maze2d-umaze-v1"
+demo_pkl: "data/maze2d-umaze-v1_1.pkl"
+type: 'state'

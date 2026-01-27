@@ -1,0 +1,8 @@
+demo_pkl: "data/square_task_D0/100.pkl"
+type: 'state'
+demo_hdf5: "data/square_task_D0/demo.hdf5"
+robosuite: True
+name: Square_D0
+#cams:
+  #- agentview
+  #- robot0_eye_in_hand

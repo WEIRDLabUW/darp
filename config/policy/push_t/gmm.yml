@@ -1,0 +1,34 @@
+train_config:
+  epochs: 230
+  batch_size: 32
+  cond_force_retrain: True
+  model_name: "bc"
+  loss_fn: "log_likelihood"
+  optimizers:
+    0:
+      lr: 0.01
+      weight_decay: 0.000001
+
+model_config:
+  type: "gmm"
+  wrapped_type: "mlp"
+  num_modes: 8
+  scale: True
+  obs_horizon: 1
+  act_horizon: 1
+  hidden_dims:
+  - 256
+  - 256
+  - 256
+  dropout_rate: 0.0
+  batch_norm: True
+  assume_io_size: True
+  optimizer: 0
+
+#load_resnet: False
+
+#(23:24:46 train_bc.py@708 INFO) New best score 0.6757758865462736 found at epoch 230
+# (23:36:44 nn_sweep_param.py@156 INFO) Trial 7 with value 8 finished with score 0.6757758865462736: best score 0.6757758865462736 with value 8
+
+
+#[I 2025-07-29 08:15:32,911] Trial 222 finished with value: 0.83 and parameters: {'epochs': 164, 'k': 691, 'lookback': 6, 'decay_rate': -2.320107653627486, 'final_neighbors_ratio': 0.8455530516502954, 'batch_size': 64, 'hidden_dims_architecture': (1024, 512, 256, 128, 64), 'dropout': 0.22493332474867941, 'batch_norm': True, 'lr': 0.01, 'weight_decay': 1e-06}. Best is trial 222 with value: 0.83.

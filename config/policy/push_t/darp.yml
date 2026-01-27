@@ -1,0 +1,39 @@
+model_config:
+  act_horizon: 1
+  assume_io_size: true
+  batch_norm: true
+  darp: true
+  dropout_rate: 0.0
+  hidden_dims:
+  - 256
+  - 256
+  - 256
+  obs_horizon: 1
+  optimizer: 0
+  retrieval_config:
+    decay_rate: -1.4976995661530812
+    final_neighbors_ratio: 0.6392639812922932
+    k: 2699
+    lookback: 49
+    method: knn
+  scale: true
+  type: mlp
+  sideload_set_transformer_gmm: true
+  num_modes: 9
+  set_transformer_config:
+    num_heads: 3
+    num_inds: 12
+    dim_hidden: 60
+    optimizer: 0
+train_config:
+  batch_size: 32
+  force_retrain: True
+  epochs: 293
+  loss_fn: "log_likelihood"
+  model_name: darp_stack_set_transformer_gmm
+  optimizers:
+    0:
+      lr: 0.001
+      weight_decay: 0.0
+#FrozenTrial(number=161, state=TrialState.COMPLETE, values=[0.6987993299981612], datetime_start=datetime.datetime(2025, 9, 6, 17, 46, 51, 185951), datetime_complete=datetime.datetime(2025, 9, 6, 18, 6, 16, 11908), params={'epochs': 293, 'num_heads': 3, 'head_dim': 20, 'num_inds': 12, 'modes': 9, 'k': 2699, 'lookback': 49, 'decay_rate': -1.4976995661530812, 'final_neighbors_ratio': 0.6392639812922932}, user_attrs={}, system_attrs={}, intermediate_values={}, distributions={'epochs': IntDistribution(high=500, log=False, low=5, step=1), 'num_heads': IntDistribution(high=5, log=False, low=2, step=1), 'head_dim': IntDistribution(high=20, log=False, low=8, step=4), 'num_inds': IntDistribution(high=24, log=False, low=8, step=4), 'modes': IntDistribution(high=10, log=False, low=2, step=1), 'k': IntDistribution(high=5000, log=False, low=10, step=1), 'lookback': IntDistribution(high=50, log=False, low=2, step=1), 'decay_rate': FloatDistribution(high=0.0, log=False, low=-3.0, step=None), 'final_neighbors_ratio': FloatDistribution(high=1.0, log=False, low=0.05, step=None)}, trial_id=162, value=None)
+

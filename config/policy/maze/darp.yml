@@ -1,0 +1,32 @@
+model_config:
+  act_horizon: 1
+  assume_io_size: true
+  batch_norm: true
+  darp: true
+  dropout_rate: 0.0
+  hidden_dims:
+  - 256
+  - 256
+  - 256
+  obs_horizon: 1
+  optimizer: 0
+  retrieval_config:
+    decay_rate: -0.8590437591576167
+    final_neighbors_ratio: 0.15278224150861985
+    k: 52
+    lookback: 47
+    method: knn
+  scale: true
+  type: mlp
+train_config:
+  batch_size: 32
+  force_retrain: True
+  epochs: 261
+  model_name: darp_stack
+  optimizers:
+    0:
+      lr: 0.01
+      weight_decay: 0.000001
+
+# (00:48:07 study.py@1163 INFO) Trial 453 finished with value: 0.57 and parameters: {'epochs': 261, 'k': 52, 'lookback': 47, 'decay_rate': -0.8590437591576167, 'final_neighbors_ratio': 0.15278224150861985}. Best is trial 453 with value: 0.57.
+

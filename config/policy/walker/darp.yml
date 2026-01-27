@@ -1,0 +1,31 @@
+model_config:
+  act_horizon: 1
+  assume_io_size: true
+  batch_norm: true
+  darp: true
+  dropout_rate: 0.0
+  hidden_dims:
+  - 256
+  - 256
+  - 256
+  obs_horizon: 1
+  optimizer: 0
+  retrieval_config:
+    decay_rate: -0.06668280504515464
+    final_neighbors_ratio: 0.11812910488908131
+    k: 474
+    lookback: 48
+    method: knn
+  scale: true
+  type: mlp
+train_config:
+  batch_size: 32
+  force_retrain: True
+  epochs: 100
+  model_name: walker_darp_baseline
+  optimizers:
+    0:
+      lr: 0.01
+      weight_decay: 0.000001
+
+#(18:48:17 study.py@1163 INFO) Trial 338 finished with value: 4894.009814366452 and parameters: {'epochs': 100, 'k': 474, 'lookback': 48, 'decay_rate': -0.06668280504515464, 'final_neighbors_ratio': 0.11812910488908131}. Best is trial 338 with value: 4894.009814366452.

@@ -1,0 +1,28 @@
+model_config:
+  act_horizon: 16
+  assume_io_size: true
+  darp: true
+  obs_horizon: 2
+  optimizer: 0
+  retrieval_config:
+    decay_rate: -0.1467619594668312
+    final_neighbors_ratio: 0.29817159800728055
+    k: 536
+    lookback: 2
+    method: knn
+  scale: true
+  type: diffusion
+  num_train_steps: 100
+  num_inference_steps: 20
+  #noise_loss: False
+train_config:
+  batch_size: 32
+  force_retrain: True
+  epochs: 300
+  model_name: darp_stack_diffusion
+  loss_fn: "loss_from_forward"
+  optimizers:
+    0:
+      lr: 0.0001
+      weight_decay: 0.00001
+#[I 2025-04-18 10:28:54,487] Trial 32 finished with value: 0.82 and parameters: {'epochs': 79, 'k': 895, 'lookback': 28, 'decay_rate': -0.19347893450524845, 'final_neighbors_ratio': 0.3295665695799598}. Best is trial 32 with value: 0.82.

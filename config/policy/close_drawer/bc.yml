@@ -1,0 +1,26 @@
+train_config:
+  epochs: 35
+  batch_size: 32
+  cond_force_retrain: True
+  model_name: "bc_close_drawer_baseline"
+  optimizers:
+    0:
+      lr: 0.01
+      weight_decay: 0.000001
+
+model_config:
+  type: "mlp"
+  scale: True
+  obs_horizon: 1
+  act_horizon: 1
+  hidden_dims:
+  - 256
+  - 256
+  - 256
+  dropout_rate: 0.0
+  batch_norm: True
+  assume_io_size: True
+  optimizer: 0
+
+#(03:53:11 train_bc.py@1004 INFO) New best score 0.54 found at epoch 35
+

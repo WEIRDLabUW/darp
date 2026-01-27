@@ -1,0 +1,34 @@
+model_config:
+  act_horizon: 1
+  assume_io_size: true
+  batch_norm: true
+  darp: true
+  dropout_rate: 0.0
+  hidden_dims:
+  - 256
+  - 256
+  - 256
+  obs_horizon: 1
+  optimizer: 0
+  retrieval_config:
+    decay_rate: -1.944699475997476
+    final_neighbors_ratio: 0.970312967544012
+    k: 686
+    lookback: 29
+    method: knn
+    monolithic: False
+    include_action: True
+  scale: true
+  type: mlp
+train_config:
+  batch_size: 32
+  force_retrain: True
+  #epochs: 1000
+  epochs: 27
+  model_name: darp_close_drawer
+  optimizers:
+    0:
+      lr: 0.01
+      weight_decay: 0.000001
+
+#(04:30:32 study.py@1161 INFO) Trial 418 finished with value: 0.8 and parameters: {'epochs': 27, 'k': 686, 'lookback': 29, 'decay_rate': -1.944699475997476, 'final_neighbors_ratio': 0.970312967544012}. Best is trial 418 with value: 0.8.

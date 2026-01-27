@@ -1,0 +1,26 @@
+train_config:
+  epochs: 260
+  batch_size: 32
+  cond_force_retrain: True
+  model_name: "bc_stack_baseline"
+  optimizers:
+    0:
+      lr: 0.01
+      weight_decay: 0.000001
+
+model_config:
+  type: "mlp"
+  scale: True
+  obs_horizon: 1
+  act_horizon: 1
+  hidden_dims:
+  - 256
+  - 256
+  - 256
+  dropout_rate: 0.0
+  batch_norm: True
+  assume_io_size: True
+  optimizer: 0
+
+# (17:31:46 train_bc.py@675 INFO) Evaluating epoch 260...
+# (17:32:03 nn_eval.py@465 INFO) mean 0.47, std 0.5
