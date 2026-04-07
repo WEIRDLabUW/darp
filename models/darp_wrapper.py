@@ -200,11 +200,18 @@ class DARPWrapper(ModelWrapper):
             if not (self.wrapped.training or self.validation):
                 combined_actions = self.output_scaler.inverse_transform(combined_actions)
 
+            if self.is_diffusion:
+                return combined_actions.view(batch_size, self.act_horizon, self.action_size)
+
             return combined_actions
         else:
             all_actions = all_actions.view(batch_size, self.retrieval_agent.num_neighbors, -1)
+            mean_action = torch.mean(all_actions, axis=1)
 
-            return torch.mean(all_actions, axis=1)
+            if self.is_diffusion:
+                return mean_action.view(batch_size, self.act_horizon, self.action_size)
+
+            return mean_action
 
     def to(self, *args, **kwargs):
         result = super().to(*args, **kwargs)

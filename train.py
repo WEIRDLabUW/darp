@@ -11,7 +11,6 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from models.model_factory import ModelFactory
 from models.model_utils import set_attributes_from_args
-from eval import batched_eval
 from util import create_matrices, set_seed
 from torch.utils.tensorboard import SummaryWriter
 from logging_util import logger
@@ -25,7 +24,7 @@ import os
 from types import SimpleNamespace
 
 
-def save_model(model, optimizer, train_loader, path, sloppy=False, darp=False, is_diffusion=False):
+def save_model(model, optimizer, train_loader, path, sloppy=False, darp=False, is_diffusion=False, ema=None):
     if isinstance(model, DistributedDataParallel):
         model = model.module
 
@@ -40,10 +39,16 @@ def save_model(model, optimizer, train_loader, path, sloppy=False, darp=False, i
         else:
             model = model._orig_mod
 
-    torch.save({'model': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'dataloader_rng_state': train_loader.generator.get_state()
-    }, path)
+    checkpoint = {
+        'model': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'dataloader_rng_state': train_loader.generator.get_state()
+    }
+    
+    if ema is not None:
+        checkpoint['ema'] = ema.state_dict()
+
+    torch.save(checkpoint, path)
 
     if sloppy and darp:
         model.compile()
@@ -390,9 +395,15 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
 
     # If the process group is already initialized, something else started it and needs it, so don't kill at the end
     start_process_group = not dist.is_initialized()
-    if world_size > 1 and start_process_group:
-        dist.init_process_group("nccl", rank=rank, world_size=world_size, timeout=datetime.timedelta(minutes=30))
+    if world_size > 1:
+        # Common fixes for NCCL hangs
+        os.environ["NCCL_P2P_DISABLE"] = "1"
+        # os.environ["NCCL_IB_DISABLE"] = "1"
+        # os.environ["NCCL_DEBUG"] = "INFO"
+
         torch.cuda.set_device(rank)
+        if start_process_group:
+            dist.init_process_group("nccl", rank=rank, world_size=world_size, timeout=datetime.timedelta(minutes=30))
 
     device = f"cuda:{rank}"
     if 'device' not in env_cfg:
@@ -408,11 +419,12 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
     act_horizon = model_cfg.get("act_horizon", 1)
 
     log_dir = os.path.join("tensorboard_logs", f"{config.model_name}")
-    writer = SummaryWriter(log_dir)
+    writer = SummaryWriter(log_dir) if rank == 0 else None
 
     config.model_name = f"model_checkpoints/{config.model_name}.pth"
 
-    os.makedirs(os.path.dirname(config.model_name), exist_ok=True)
+    if rank == 0:
+        os.makedirs(os.path.dirname(config.model_name), exist_ok=True)
 
     if 'demo_pkl' in env_cfg:
         model_cfg['demo_pkl'] = env_cfg['demo_pkl']
@@ -521,10 +533,11 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
         optimizer.load_state_dict(config.loaded_optimizer_dict)
 
     if is_diffusion:
+        num_warmup_steps = policy_cfg['train_config'].get('num_warmup_steps', 500)
         scheduler = get_scheduler(
             "cosine",
             optimizer=optimizer,
-            num_warmup_steps=500,
+            num_warmup_steps=num_warmup_steps,
             num_training_steps=config.epochs * len(train_loader)
         )
         ema = EMAModel(
@@ -567,8 +580,11 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
     action_mean = action_scaler.mean_torch
     action_scale = action_scaler.scale_torch
 
+    import sys
+    print(f"[Rank {rank}] Entering DDP constructor...", flush=True)
     if world_size > 1:
         model = DistributedDataParallel(model, device_ids=[rank])
+    print(f"[Rank {rank}] DDP constructor finished.", flush=True)
 
     best_val_loss = float('inf')
     early_stopping_patience = 13
@@ -617,6 +633,7 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
             for optimizer, scaler in zip(optimizers, scalers):
                 optimizer.zero_grad(set_to_none=True)
                 scaler.scale(loss).backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                 scaler.step(optimizer)
                 scaler.update()
                 if is_diffusion:
@@ -662,6 +679,8 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
                         states = states.to(device).contiguous()
 
                         if is_diffusion:
+                            states = states.reshape(len(states), -1)
+                            actions = actions.reshape(len(actions), -1)
                             states = torch.hstack((states, actions))
 
                         loss = model(states)
@@ -708,9 +727,8 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
                 if early_stopping_counter >= early_stopping_patience:
                     logger.info(f'Recommend early stopping after {epoch+1 - early_stopping_patience} epochs')
                     model.load_state_dict(best_check['model'])
-                    pickle.dump(best_val_loss, open("results/diffusion_tune_results.pkl", 'wb'))
 
-                    save_model(model, optimizer, train_loader, config.model_name, sloppy=sloppy, darp=darp, is_diffusion=is_diffusion)
+                    save_model(model, optimizer, train_loader, config.model_name, sloppy=sloppy, darp=darp, is_diffusion=is_diffusion, ema=ema if is_diffusion else None)
 
                     if eval_epochs == 0:
                         best_score = best_val_loss
@@ -736,7 +754,7 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
         if eval_epochs != 0 and (epoch > 0 or eval_epochs == 1) and ((epoch + 1) % eval_epochs == 0) and epoch + 1 >= start_eval_epoch:
             if rank == 0:
                 logger.info(f"Evaluating epoch {epoch + 1}...")
-                save_model(model, optimizer, train_loader, config.model_name, sloppy=sloppy, darp=darp, is_diffusion=is_diffusion)
+                save_model(model, optimizer, train_loader, config.model_name, sloppy=sloppy, darp=darp, is_diffusion=is_diffusion, ema=ema if is_diffusion else None)
 
             # Crucial - have to unwrap module or batched eval will fail
             if world_size > 1:
@@ -754,6 +772,7 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
                 torch_rng_state = torch.get_rng_state()
                 cuda_rng_state = torch.cuda.get_rng_state() if torch.cuda.is_available() else None
 
+                from eval import batched_eval   
                 score = batched_eval(env_cfg, eval_model, trials=eval_trials, reset=True, darp=darp, results=(eval_result_name + "_temp") if eval_result_name is not None else None, trials_per_worker=(2 if is_diffusion and eval_trials > 50 else 1))
                 if score > best_score:
                     best_score = score
@@ -817,7 +836,7 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
             model.train()
 
     if rank == 0:
-        save_model(model, optimizer, train_loader, config.model_name, sloppy=sloppy, darp=darp, is_diffusion=is_diffusion)
+        save_model(model, optimizer, train_loader, config.model_name, sloppy=sloppy, darp=darp, is_diffusion=is_diffusion, ema=ema if is_diffusion else None)
 
     if world_size > 1 and start_process_group:
         dist.destroy_process_group()

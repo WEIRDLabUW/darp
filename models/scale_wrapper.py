@@ -67,15 +67,22 @@ class DiffusionScaleWrapper(nn.Module):
 
     def forward(self, input):
         input = input.clone()
+        
+        obs_diff = self.obs_max - self.obs_min
+        obs_diff = torch.where(obs_diff == 0, torch.ones_like(obs_diff), obs_diff)
+
+        action_diff = self.action_max - self.action_min
+        action_diff = torch.where(action_diff == 0, torch.ones_like(action_diff), action_diff)
+
         if self.wrapped.model.training:
             obs = input[:, :-self.action_len * self.action_horizon]
             obs = obs.reshape(len(input) * self.obs_horizon, -1)
-            obs = ((obs - self.obs_min) / (self.obs_max - self.obs_min)) * 2 - 1
+            obs = ((obs - self.obs_min) / obs_diff) * 2 - 1
             input[:, :-self.action_len * self.action_horizon] = obs.reshape(len(input), -1)
 
             actions = input[:, -self.action_len * self.action_horizon:]
             actions = actions.reshape(len(input) * self.action_horizon, -1)
-            actions = ((actions - self.action_min) / (self.action_max - self.action_min)) * 2 - 1
+            actions = ((actions - self.action_min) / action_diff) * 2 - 1
             input[:, -self.action_len * self.action_horizon:] = actions.reshape(len(input), -1)
 
             # At training time, this will be noise loss - don't touch it
@@ -83,12 +90,12 @@ class DiffusionScaleWrapper(nn.Module):
         else:
             obs = input
             obs = obs.reshape(len(input) * self.obs_horizon, -1)
-            obs = ((obs - self.obs_min) / (self.obs_max - self.obs_min)) * 2 - 1
+            obs = ((obs - self.obs_min) / obs_diff) * 2 - 1
             input = obs.reshape(len(input), -1)
 
             output = self.wrapped(input)
 
-            output = ((output + 1) / 2) * (self.action_max - self.action_min) + self.action_min
+            output = ((output + 1) / 2) * action_diff + self.action_min
 
         return output
 

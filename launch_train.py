@@ -1,11 +1,10 @@
 import os
 os.environ["D4RL_SUPPRESS_IMPORT_ERROR"] = "1"
-import gym
-gym.logger.set_level(40)
 import sys
 import subprocess
 
 import socket
+import torch
 
 def find_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -13,7 +12,7 @@ def find_free_port():
         return s.getsockname()[1]
 
 def main():
-    eval_world_size = int(os.environ.get('SLURM_NTASKS', 1))
+    eval_world_size = torch.cuda.device_count()
     free_port = find_free_port()
 
     cmd = [

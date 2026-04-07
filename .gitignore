@@ -1,0 +1,8 @@
+__pycache__/
+
+log/
+tensorboard_logs/
+envs/
+*.mp4
+*.pkl
+*.pth

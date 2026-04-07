@@ -1,20 +1,12 @@
 import os
 
 from constants import RESNET_SIZE
-from push_t_env import PushTEnv
 os.environ['D4RL_SUPPRESS_IMPORT_ERROR'] = '1'
 
 import torch
-import gym
-
-import robomimic
-import robomimic.utils.obs_utils as ObsUtils
-import robomimic.utils.env_utils as EnvUtils
-from robomimic.utils.file_utils import get_env_metadata_from_dataset
 
 import numpy as np
 
-import mimicgen.utils.robomimic_utils as RobomimicUtils
 # d4rl sets some logging setting, let's undo them
 import logging
 for handler in logging.root.handlers[:]:

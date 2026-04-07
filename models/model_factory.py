@@ -196,7 +196,7 @@ class ModelFactory():
                 if not getattr(self.model_config, "scale_input", True):
                     input_scaler = None
 
-                act_min, act_max, act_len, obs_min, obs_max, obs_len = get_min_max_len(self.model_config.demo_pkl, norm_obs=self.darp)
+                act_min, act_max, act_len, obs_min, obs_max, obs_len = get_min_max_len(self.model_config.demo_pkl, norm_obs=self.darp or getattr(self.model_config, "norm_obs", False))
                 model = DiffusionScaleWrapper(model, obs_min, obs_max, obs_len, act_min, act_max, act_len, getattr(self.model_config, "obs_horizon", 1), getattr(self.model_config, "act_horizon", 1), darp=self.darp)
             else:
                 if not getattr(self.model_config, "scale_input", True):

@@ -274,6 +274,8 @@ class DiffusionPolicy(nn.Module):
             'kernel_size': 5,
             'n_groups': 8,
             'diffusion_step_embed_dim': 256,
+            'obs_dropout': 0.0,
+            'obs_noise_std': 0.0,
 
             # Training details
             'act_horizon': 1,
@@ -285,6 +287,11 @@ class DiffusionPolicy(nn.Module):
         
         self.action_dim = self.output_len
         self.obs_dim = self.input_len - self.output_len
+
+        if self.obs_dropout > 0:
+            self.drop = nn.Dropout(self.obs_dropout)
+        else:
+            self.drop = nn.Identity()
         
         # ------------------------------------------------------------------
         # 2. The Canonical Model (ConditionalUnet1D)
@@ -353,6 +360,13 @@ class DiffusionPolicy(nn.Module):
             obs = input_tensor[:, :-self.act_horizon * self.output_len]
             actions = input_tensor[:, -self.act_horizon * self.output_len:]
             
+            # Apply observation dropout
+            obs = self.drop(obs)
+            
+            # Apply observation noise augmentation
+            if self.obs_noise_std > 0:
+                obs = obs + torch.randn_like(obs) * self.obs_noise_std
+
             # 2. Prepare Data
             # Reshape for 1D Convolution: (B, Dim) -> (B, Dim, Horizon=1)
             # The canonical Unet expects (B, Dim, Horizon)
@@ -389,8 +403,6 @@ class DiffusionPolicy(nn.Module):
             if self.noise_scheduler.config.prediction_type == 'sample':
                 target = trajectory
             elif self.noise_scheduler.config.prediction_type == 'v_prediction':
-                # v_prediction target logic usually handled by scheduler, 
-                # but simple MSE on epsilon is standard for low-dim BC.
                 target = self.noise_scheduler.get_velocity(trajectory, noise, timesteps)
 
             loss = F.mse_loss(pred, target, reduction='mean')
@@ -434,8 +446,8 @@ class DiffusionPolicy(nn.Module):
 
 
             # 5. Final Processing
-            # Remove horizon dim: (B, ActionDim, 1) -> (B, ActionDim)
-            action = latents[:, 0]
+            # Return full predicted trajectory [Batch, Horizon, ActionDim]
+            action = latents
             
             # Clip to valid action range if strictly required ([-1, 1])
             if self.clip_sample:
