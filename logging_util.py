@@ -49,10 +49,12 @@ conda_filter = CondaFilter()
 
 os.makedirs("log", exist_ok=True)
 
-slurm_job_id = os.getenv('SLURM_JOB_ID')
-if slurm_job_id:
-    job_name = os.getenv('SLURM_JOB_NAME', 'unnamed_job')
-    log_filename = f"{job_name}_{slurm_job_id}.out"
+# Get job identification from environment variables, supporting both generic and SLURM-specific ones
+job_id = os.getenv('JOB_ID') or os.getenv('SLURM_JOB_ID')
+job_name = os.getenv('JOB_NAME') or os.getenv('SLURM_JOB_NAME', 'unnamed_job')
+
+if job_id:
+    log_filename = f"{job_name}_{job_id}.out"
 else:
     from datetime import datetime
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

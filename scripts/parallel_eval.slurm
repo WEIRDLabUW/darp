@@ -16,7 +16,7 @@
 
 echo "ID: ${SLURM_JOB_ID}"
 source ~/.bashrc
-cd /gscratch/weirdlab/quinn/nearest-sequence
+cd $(dirname $(pwd))
 conda activate nearest-sequence
 
 # Force software rendering
@@ -33,7 +33,7 @@ export CUDA_HOME=/mmfs1/sw/cuda/12.3.2
 export CPATH=$CONDA_PREFIX/include:$CPATH
 export LIBRARY_PATH=$CONDA_PREFIX/lib:$LIBRARY_PATH
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
-export PYTHONPATH=:/gscratch/weirdlab/quinn/nearest-sequence/video_action_learning/
+export PYTHONPATH=:$(dirname $(pwd))/video_action_learning/
 #export LD_PRELOAD=$CONDA_PREFIX/lib/libGLEW.so
 #export LD_PRELOAD=$CONDA_PREFIX/lib/libEGL.so:$LD_PRELOAD
 #export LD_PRELOAD=$CONDA_PREFIX/lib/libGL.so:$LD_PRELOAD

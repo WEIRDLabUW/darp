@@ -49,10 +49,10 @@ if [[ $bad_gpus ]]; then
 fi
 
 source ~/.bashrc
-conda activate /gscratch/weirdlab/quinn/nearest-sequence/envs/robosuite
-#conda activate /gscratch/weirdlab/quinn/nearest-sequence/envs/robocasa
+conda activate $(dirname $(pwd))/envs/robosuite
+#conda activate $(dirname $(pwd))/envs/robocasa
 
-cd /gscratch/weirdlab/quinn/darp
+cd $(pwd)
 #conda activate nearest-sequence
 
 # Force software rendering
@@ -76,10 +76,10 @@ export NCCL_DEBUG=INFO
 export CPATH=$CONDA_PREFIX/include:$CPATH
 export LIBRARY_PATH=$CONDA_PREFIX/lib:$LIBRARY_PATH
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
-export PYTHONPATH=$PYTHONPATH:/gscratch/weirdlab/quinn/nearest-sequence/video_action_learning/
-export PYTHONPATH=$PYTHONPATH:/gscratch/weirdlab/quinn/nearest-sequence/robotwin/
-#export PYTHONPATH=$PYTHONPATH:/gscratch/weirdlab/quinn/nearest-sequence/PyTorch-VAE/
-#export PYTHONPATH=$PYTHONPATH:/gscratch/weirdlab/quinn/nearest-sequence/vaes/
+export PYTHONPATH=$PYTHONPATH:$(dirname $(pwd))/video_action_learning/
+export PYTHONPATH=$PYTHONPATH:$(dirname $(pwd))/robotwin/
+#export PYTHONPATH=$PYTHONPATH:$(dirname $(pwd))/PyTorch-VAE/
+#export PYTHONPATH=$PYTHONPATH:$(dirname $(pwd))/vaes/
 #export LD_PRELOAD=$CONDA_PREFIX/lib/libGLEW.so
 #export LD_PRELOAD=$CONDA_PREFIX/lib/libEGL.so:$LD_PRELOAD
 #export LD_PRELOAD=$CONDA_PREFIX/lib/libGL.so:$LD_PRELOAD

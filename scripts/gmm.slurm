@@ -14,7 +14,7 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=quinnpfeifer@icloud.com
 source ~/.bashrc
-cd /gscratch/weirdlab/quinn/nearest-sequence
+cd $(dirname $(pwd))
 
 conda activate nearest-sequence
 

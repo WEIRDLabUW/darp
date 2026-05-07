@@ -3,22 +3,14 @@ os.environ["D4RL_SUPPRESS_IMPORT_ERROR"] = "1"
 import sys
 import subprocess
 
-import socket
 import torch
 
-def find_free_port():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('', 0))
-        return s.getsockname()[1]
-
 def main():
-    eval_world_size = torch.cuda.device_count()
-    free_port = find_free_port()
+    nproc_per_node = torch.cuda.device_count() or 1
 
     cmd = [
-        "python", "-m", "torch.distributed.launch",
-        f"--nproc_per_node={eval_world_size}",
-        f"--master_port={free_port}",
+        "torchrun",
+        f"--nproc_per_node={nproc_per_node}",
         "train.py"
     ] + sys.argv[1:]
 

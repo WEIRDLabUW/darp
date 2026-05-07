@@ -16,7 +16,7 @@
 
 echo "ID: ${SLURM_JOB_ID}"
 source ~/.bashrc
-cd /gscratch/weirdlab/quinn/nearest-sequence
+cd $(dirname $(pwd))
 
 conda activate nearest-sequence
 

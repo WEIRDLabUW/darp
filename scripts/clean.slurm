@@ -17,6 +17,6 @@
 echo "ID: ${SLURM_JOB_ID}"
 source ~/.bashrc
 #cd /gscratch/weirdlab/quinn/
-cd /gscratch/weirdlab/quinn/nearest-sequence/data/
+cd $(dirname $(pwd))/data/
 
 du -BG --max-depth=3 . | sort -n

@@ -18,7 +18,7 @@ echo "ID: ${SLURM_JOB_ID}"
 env_name="robosuite"
 #env_name="robocasa"
 source ~/.bashrc
-cd /gscratch/weirdlab/quinn/nearest-sequence
+cd $(dirname $(pwd))
 
 #echo "PRE-DEACTIVATE: ${CONDA_DEFAULT_ENV}"
 conda deactivate

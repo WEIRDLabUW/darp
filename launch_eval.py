@@ -7,21 +7,15 @@ from argparse import ArgumentParser
 import sys
 import subprocess
 
-import socket
-
-def find_free_port():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('', 0))
-        return s.getsockname()[1]
+import torch
 
 def main():
-    eval_world_size = int(os.environ.get('SLURM_NTASKS', 1))
-    free_port = find_free_port()
+
+    nproc_per_node = int(os.environ.get('SLURM_NTASKS', torch.cuda.device_count() or 1))
 
     cmd = [
-        "python", "-m", "torch.distributed.launch",
-        f"--nproc_per_node={eval_world_size}",
-        f"--master_port={free_port}",
+        "torchrun",
+        f"--nproc_per_node={nproc_per_node}",
         "eval_model.py"
     ] + sys.argv[1:]
 
