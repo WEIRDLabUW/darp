@@ -16,9 +16,10 @@ def main():
     parser.add_argument("--account", help="SLURM account")
     parser.add_argument("--local", action="store_true", help="Run locally instead of submitting to SLURM")
     
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
-    full_command = " ".join(args.command)
+    full_command_list = args.command + unknown
+    full_command = " ".join(full_command_list)
 
     if args.local:
         print(f"Running locally: {full_command}")
@@ -49,7 +50,7 @@ def main():
             sys.exit(1)
 
         sbatch_cmd.append(template_path)
-        sbatch_cmd.extend(args.command)
+        sbatch_cmd.extend(full_command_list)
 
         print(f"Submitting to SLURM: {' '.join(sbatch_cmd)}")
         subprocess.run(sbatch_cmd)

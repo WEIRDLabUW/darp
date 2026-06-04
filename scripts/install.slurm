@@ -19,10 +19,10 @@ if [ ROBOSUITE ]; then
   pip install numba==0.58.1
 else
   # Robocasa
-  #pip install -e ../cloned/robocasa/robosuite_casa/robosuite/
-  #pip install -e ../cloned/robocasa/
-  #pip install -e ../cloned/robocasa/mimicgen_casa/
-  #pip install -e ../cloned/robocasa/robomimic_casa/
+  pip install -e ../cloned/robocasa/robosuite_casa/robosuite/
+  pip install -e ../cloned/robocasa/
+  pip install -e ../cloned/robocasa/mimicgen_casa/
+  pip install -e ../cloned/robocasa/robomimic_casa/
 fi
 
 git clone git@github.com:facebookresearch/r3m.git

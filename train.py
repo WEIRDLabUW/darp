@@ -13,7 +13,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from models.model_factory import ModelFactory
 from models.model_utils import set_attributes_from_args
-from datasets import create_dataset, create_dataloader
+from datasets import create_dataset, create_dataloader, IndexActionBCDataset, ChunkingWrapper
 from util import create_matrices, set_seed, find_free_port
 from torch.utils.tensorboard import SummaryWriter
 from logging_util import logger

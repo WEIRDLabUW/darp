@@ -5,9 +5,8 @@ import torch
 import numpy as np
 import torch.nn as nn
 
-
 from constants import RESNET_SIZE
-from train_bc import BCExpertDataset, ChunkingWrapper
+from datasets import BCExpertDataset, ChunkingWrapper
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_default_dtype(torch.float32)
