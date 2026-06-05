@@ -312,7 +312,7 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
             for optimizer, scaler in zip(optimizers, scalers):
                 optimizer.zero_grad(set_to_none=True)
                 scaler.scale(loss).backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                #torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                 scaler.step(optimizer)
                 scaler.update()
                 if is_diffusion:

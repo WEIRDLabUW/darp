@@ -4,7 +4,6 @@ from constants import RESNET_SIZE
 os.environ['D4RL_SUPPRESS_IMPORT_ERROR'] = '1'
 
 import torch
-
 import numpy as np
 
 # d4rl sets some logging setting, let's undo them
@@ -19,9 +18,20 @@ import cv2
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def construct_env(config, seed=None, gpu_id=0, lock=None, render=False):
+    import gym
+    import d4rl
     is_robosuite = config.get('robosuite', False)
 
     if is_robosuite:
+        import robomimic.utils.obs_utils as ObsUtils
+        import robomimic.utils.env_utils as EnvUtils
+
+        from robomimic.utils.file_utils import get_env_metadata_from_dataset
+        import robomimic
+        import mimicgen
+        import mimicgen.utils.robomimic_utils as RobomimicUtils
+
+
         dummy_spec = dict(
             obs=dict(
                     low_dim=["robot0_eef_pos"],
@@ -53,7 +63,6 @@ def construct_env(config, seed=None, gpu_id=0, lock=None, render=False):
     if env_name == 'push_t':
         env = PushTEnv()
     else:
-        import d4rl
         env = gym.make(env_name)
         if env_name == "maze2d-umaze-v1":
             env = env.env

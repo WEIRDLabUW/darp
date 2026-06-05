@@ -69,10 +69,8 @@ class DiffusionScaleWrapper(nn.Module):
         input = input.clone()
         
         obs_diff = self.obs_max - self.obs_min
-        obs_diff = torch.where(obs_diff == 0, torch.ones_like(obs_diff), obs_diff)
 
         action_diff = self.action_max - self.action_min
-        action_diff = torch.where(action_diff == 0, torch.ones_like(action_diff), action_diff)
 
         if self.wrapped.model.training:
             obs = input[:, :-self.action_len * self.action_horizon]

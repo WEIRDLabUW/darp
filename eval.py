@@ -185,6 +185,23 @@ def prepare_env(config, trial=None, gpu_id=0, lock=None):
 
 def env_worker(worker_id, trials, config, command_queue, result_queue, local_rank, reset, lock):
     import os
+    import sys
+    import logging
+
+    # Silence all output from this process (local to this child process only)
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    os.dup2(devnull, sys.stdout.fileno())
+    os.dup2(devnull, sys.stderr.fileno())
+    
+    # Remove local logging handlers to stop writing to shared log files
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    # Reset local excepthook to stop custom logging of exceptions in this child
+    sys.excepthook = sys.__excepthook__
+    logging.disable(logging.CRITICAL)
+
     p = psutil.Process()
     available_cpus = list(os.sched_getaffinity(0))
     p.cpu_affinity([available_cpus[worker_id % len(available_cpus)]])
@@ -457,7 +474,6 @@ def batched_eval(config, agent, trials=10, results=None, reset=False, darp=True,
             # for worker in workers:
             #     worker.join()
 
-        episode_rewards = episode_rewards[episode_rewards >= 0]
         if world_size > 1:
             # Create tensors to gather results
             all_rewards = [None for _ in range(world_size)]

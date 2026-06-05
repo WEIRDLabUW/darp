@@ -91,6 +91,11 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     if issubclass(exc_type, KeyboardInterrupt):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
+        
+    # Only log exceptions from the main process to avoid child process flood
+    import multiprocessing
+    if multiprocessing.current_process().name != 'MainProcess':
+        return
 
     logger.critical("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
 
