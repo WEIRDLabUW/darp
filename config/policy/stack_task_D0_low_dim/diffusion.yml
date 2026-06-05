@@ -11,7 +11,7 @@ model_config:
 train_config:
   batch_size: 32
   force_retrain: True
-  epochs: 500
+  epochs: 235
   model_name: dan_stack
   loss_fn: "loss_from_forward"
   optimizers:

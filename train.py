@@ -152,7 +152,8 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
         if obs_horizon > 1 or act_horizon > 1:
             train_index_dataset = ChunkingWrapper(obs_horizon, act_horizon, train_index_dataset)
 
-            model.create_horizon_mapping(train_index_dataset)
+            if darp:
+                model.create_horizon_mapping(train_index_dataset)
 
         return model, -1
 

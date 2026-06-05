@@ -16,8 +16,6 @@ model_config:
     k: 536
     lookback: 23
     method: knn
-    monolithic: False
-    include_action: True
   scale: true
   type: mlp
 train_config:
