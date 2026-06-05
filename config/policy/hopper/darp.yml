@@ -24,7 +24,7 @@ train_config:
   batch_size: 32
   force_retrain: True
   epochs: 237
-  model_name: darp_hopper_baseline
+  model_name: hopper_darp_baseline
   optimizers:
     0:
       lr: 0.001

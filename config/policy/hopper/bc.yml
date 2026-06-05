@@ -2,7 +2,7 @@ train_config:
   epochs: 120
   batch_size: 32
   force_retrain: True
-  model_name: "hopper_bc"
+  model_name: "hopper_bc_baseline"
   optimizers:
     0:
       lr: 0.001
