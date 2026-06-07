@@ -1,3 +1,4 @@
+from logging_util import logger
 import math
 from types import SimpleNamespace
 
@@ -21,7 +22,6 @@ class ModelFactory():
     def __init__(self, config: dict, **kwargs):
         self.model_config = SimpleNamespace()
 
-        print("Setting attributes in ModelFactory")
         set_attributes_from_args(self.model_config, config, kwargs)
 
         # Flags that change construction
@@ -161,7 +161,7 @@ class ModelFactory():
             model = FusionWrapper(intermediate_models, ModelFactory(fusion_config))
         else:
             if not self.model_config.type == "mlp":
-                print(f"Model type {self.model_config.type} is not supported! Defaulting to MLP")
+                logger.warning(f"Model type {self.model_config.type} is not supported! Defaulting to MLP")
 
             if getattr(self.model_config, 'assume_io_size', False):
                 assert hasattr(self.model_config, "demo_pkl"), "To assume io size, include attribute 'demo_pkl' in your model config file that point to the data you'd like to assume io size from."

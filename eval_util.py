@@ -10,7 +10,6 @@ import numpy as np
 import logging
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
-from logging_util import logger
 
 import cv2
 
@@ -44,14 +43,11 @@ def construct_env(config, seed=None, gpu_id=0, lock=None, render=False):
         env_meta = get_env_metadata_from_dataset(dataset_path=config['demo_hdf5'])
         env_meta['env_kwargs']['hard_reset'] = False
         env_meta['env_kwargs']['render_gpu_device_id'] = gpu_id
-        env_meta['env_kwargs']['reward_shaping'] = config.get("reward_shaping", False)
         env_meta['env_kwargs']['has_offscreen_renderer'] = render
         if seed is not None:
             env_meta['seed'] = seed
         if robomimic.__version__ == "0.3.0":
-            logger.debug(f"{gpu_id}:{seed} pre env from meta")
-            env = EnvUtils.create_env_from_metadata(env_meta=env_meta, render_offscreen=render, logger=logger, seed=seed, lock=lock)
-            logger.debug(f"{gpu_id}:{seed} post env from meta")
+            env = EnvUtils.create_env_from_metadata(env_meta=env_meta, render_offscreen=render, seed=seed, lock=lock)
         else:
             env = EnvUtils.create_env_from_metadata(env_meta=env_meta, render_offscreen=render)
 
@@ -61,6 +57,7 @@ def construct_env(config, seed=None, gpu_id=0, lock=None, render=False):
     env_name = config['name']
 
     if env_name == 'push_t':
+        from push_t_env import PushTEnv
         env = PushTEnv()
     else:
         env = gym.make(env_name)
@@ -130,29 +127,26 @@ def get_action_from_obs_batched(config, model, envs, observations, frames, obs_h
     obs_type = config['type']
     obs = get_processed_obs(observations, frames, envs, model, config, obs_type)
 
-    if hasattr(model, "get_action"):
-        actions = model.get_action(obs, curr_rgb_obs=cv2.resize(frame, (224, 224), cv2.INTER_AREA).flatten()).squeeze()
-    else:
-        if obs_history is not None:
-            if obs_history.shape[2] == 0:
-                obs_history = torch.empty((obs_history.shape[0], 0, obs.shape[-1]), device=obs_history.device)
-            obs_history = torch.cat((obs_history, obs.unsqueeze(1)), dim=1)
-            obs_horizon = getattr(model, "obs_horizon", 1)
-            if obs_horizon > 1 and not hasattr(model, 'retrieval_agent'):
-                if obs_history.shape[1] < obs_horizon:
-                    padding_needed = obs_horizon - obs_history.shape[1]
-                    padding = obs_history[:, 0].unsqueeze(1).repeat(1, padding_needed, 1)
-                    full_obs_history = torch.cat((padding, obs_history), dim=1)
-                else:
-                    full_obs_history = obs_history[:, -obs_horizon:]
-
-                flat_obs_history = full_obs_history.reshape(full_obs_history.shape[0], -1)
-                    
-                actions = model(flat_obs_history)
+    if obs_history is not None:
+        if obs_history.shape[2] == 0:
+            obs_history = torch.empty((obs_history.shape[0], 0, obs.shape[-1]), device=obs_history.device)
+        obs_history = torch.cat((obs_history, obs.unsqueeze(1)), dim=1)
+        obs_horizon = getattr(model, "obs_horizon", 1)
+        if obs_horizon > 1 and not hasattr(model, 'retrieval_agent'):
+            if obs_history.shape[1] < obs_horizon:
+                padding_needed = obs_horizon - obs_history.shape[1]
+                padding = obs_history[:, 0].unsqueeze(1).repeat(1, padding_needed, 1)
+                full_obs_history = torch.cat((padding, obs_history), dim=1)
             else:
-                actions = model(obs_history)
+                full_obs_history = obs_history[:, -obs_horizon:]
+
+            flat_obs_history = full_obs_history.reshape(full_obs_history.shape[0], -1)
+                
+            actions = model(flat_obs_history)
         else:
-            actions = model(obs)
+            actions = model(obs_history)
+    else:
+        actions = model(obs)
 
     return actions.cpu().detach().numpy(), obs_history
 

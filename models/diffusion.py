@@ -188,10 +188,6 @@ class ConditionalUnet1D(nn.Module):
         self.down_modules = down_modules
         self.final_conv = final_conv
 
-        print("number of parameters: {:e}".format(
-            sum(p.numel() for p in self.parameters()))
-        )
-
     def forward(self,
             sample: torch.Tensor,
             timestep: Union[torch.Tensor, float, int],
@@ -251,10 +247,6 @@ class ConditionalUnet1D(nn.Module):
 class DiffusionPolicy(nn.Module):
     def __init__(self, **kwargs):
         super().__init__()
-
-        # ------------------------------------------------------------------
-        # 1. Configuration
-        # ------------------------------------------------------------------
         # Default configuration matches 'real-stanford' best practices for low-dim
         DEFAULT_CONFIG = {
             # Input / Output dimensions (Required)
@@ -293,10 +285,6 @@ class DiffusionPolicy(nn.Module):
         else:
             self.drop = nn.Identity()
         
-        # ------------------------------------------------------------------
-        # 2. The Canonical Model (ConditionalUnet1D)
-        # ------------------------------------------------------------------
-        # This replaces your custom 'NoisePredictionNet'
         self.model = ConditionalUnet1D(
             input_dim=self.action_dim,
             global_cond_dim=self.obs_dim * self.obs_horizon,
@@ -306,13 +294,8 @@ class DiffusionPolicy(nn.Module):
             n_groups=self.n_groups,
         )
 
-        # ------------------------------------------------------------------
-        # 3. The Canonical Scheduler
-        # ------------------------------------------------------------------
         self.noise_scheduler = DDIMScheduler(
             num_train_timesteps=self.num_train_steps,
-            #beta_start=0.0001,
-            #beta_end=0.02,
             beta_schedule=self.beta_schedule,
             clip_sample=self.clip_sample,
             prediction_type=self.prediction_type,
@@ -342,9 +325,6 @@ class DiffusionPolicy(nn.Module):
                 self.device = device
         return self
 
-    # ------------------------------------------------------------------
-    # 4. Forward Pass (Training & Inference Wrapper)
-    # ------------------------------------------------------------------
     def forward(self, input_tensor):
         """
         Args:
@@ -352,53 +332,39 @@ class DiffusionPolicy(nn.Module):
                           (B, ObsDim) for inference
         """
 
-        # --- TRAINING MODE ---
         if self.training:
             self.epoch += 1
-            # 1. Slice Inputs (Your style)
-            # Assume last 'output_len' columns are the Action
             obs = input_tensor[:, :-self.act_horizon * self.output_len]
             actions = input_tensor[:, -self.act_horizon * self.output_len:]
             
-            # Apply observation dropout
             obs = self.drop(obs)
             
-            # Apply observation noise augmentation
             if self.obs_noise_std > 0:
                 obs = obs + torch.randn_like(obs) * self.obs_noise_std
 
-            # 2. Prepare Data
-            # Reshape for 1D Convolution: (B, Dim) -> (B, Dim, Horizon=1)
-            # The canonical Unet expects (B, Dim, Horizon)
             trajectory = actions.reshape(len(input_tensor), -1, self.output_len)
             global_cond = obs
 
-            # 3. Sample Noise
             noise = torch.randn(trajectory.shape, device=trajectory.device)
 
-            # 4. Sample Timesteps
             bsz = trajectory.shape[0]
             timesteps = torch.randint(
                 0, self.noise_scheduler.config.num_train_timesteps, 
                 (bsz,), device=trajectory.device
             ).long()
 
-            # 5. Add Noise (Forward Diffusion)
             noisy_trajectory = self.noise_scheduler.add_noise(
                 original_samples=trajectory,
                 noise=noise,
                 timesteps=timesteps
             )
 
-            # 6. Predict Noise (Model Forward)
             pred = self.model(
                 sample=noisy_trajectory,
                 timestep=timesteps,
                 global_cond=global_cond
             )
 
-            # 7. Calculate Loss
-            # The target depends on prediction_type (usually 'epsilon')
             target = noise
             if self.noise_scheduler.config.prediction_type == 'sample':
                 target = trajectory
@@ -408,26 +374,18 @@ class DiffusionPolicy(nn.Module):
             loss = F.mse_loss(pred, target, reduction='mean')
             return loss
 
-        # --- INFERENCE MODE ---
         else:
-            # 1. Prepare Observation
             obs = input_tensor
             batch_size = obs.shape[0]
 
-            # 2. Initialize Noisy Action (Latent)
-            # Shape: (B, ActionDim, Horizon)
             latents = torch.randn(
                 (batch_size, self.act_horizon, self.action_dim), 
                 device=self.device
             )
 
-            # 3. Setup Scheduler
             self.noise_scheduler.set_timesteps(self.num_inference_steps)
 
-            # 4. Denoising Loop
             for t in self.noise_scheduler.timesteps:
-                # a. Apply Model
-                # Model inputs must be on correct device
                 t_input = t.to(self.device) 
                 
                 noise_pred = self.model(
@@ -436,20 +394,14 @@ class DiffusionPolicy(nn.Module):
                     global_cond=obs
                 )
 
-                # b. Scheduler Step
-                # inverse_step for DDIM, step for DDPM
                 latents = self.noise_scheduler.step(
                     model_output=noise_pred,
                     timestep=t,
                     sample=latents
                 ).prev_sample
 
-
-            # 5. Final Processing
-            # Return full predicted trajectory [Batch, Horizon, ActionDim]
             action = latents
             
-            # Clip to valid action range if strictly required ([-1, 1])
             if self.clip_sample:
                 action = torch.clamp(action, -1, 1)
                 

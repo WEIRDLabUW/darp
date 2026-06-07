@@ -27,11 +27,11 @@ import os
 from types import SimpleNamespace
 
 
-def save_model(model, optimizer, train_loader, path, sloppy=False, darp=False, is_diffusion=False, ema=None):
+def save_model(model, optimizer, train_loader, path, fast=False, darp=False, is_diffusion=False, ema=None):
     if isinstance(model, DistributedDataParallel):
         model = model.module
 
-    if sloppy:
+    if fast:
         if darp:
             if is_diffusion:
                 model.wrapped.wrapped.model = model.wrapped.wrapped.model._orig_mod
@@ -53,10 +53,10 @@ def save_model(model, optimizer, train_loader, path, sloppy=False, darp=False, i
 
     torch.save(checkpoint, path)
 
-    if sloppy and darp:
+    if fast and darp:
         model.compile()
 
-def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epochs=0, start_eval_epoch=0, sloppy=False, eval_result_name=None):
+def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epochs=0, start_eval_epoch=0, fast=False, eval_result_name=None):
     DEFAULT_CONFIG = {
         'force_retrain': True,
         'epochs': 100,
@@ -115,13 +115,6 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
 
     # Check if the model already exists
     if (os.path.exists(config.model_name) and not config.force_retrain):
-        if 'dino' in model_cfg['type'] or model_cfg.get("sideload_dino", False):
-            # We have to do this to ensure we can save/load our model
-            import warnings
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", message="xFormers is not available*")
-                _ = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14', verbose=False)
-
         # Load the model if it exists
         logger.info(f"Skipping training phase, loading model from {config.model_name}")
         checkpoint = torch.load(config.model_name, weights_only=False)
@@ -169,9 +162,7 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
     model.to(device)
 
     loss_from_forward = False
-    if config.loss_fn == 'cross_entropy':
-        criterion = nn.CrossEntropyLoss()
-    elif config.loss_fn == 'loss_from_forward':
+    if config.loss_fn == 'loss_from_forward':
         loss_from_forward = True
         criterion = None
     elif config.loss_fn == 'log_likelihood':
@@ -196,13 +187,12 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
             if param.optimizer == optimizer_idx and param.requires_grad:
                 params.append(param)
 
-        optimizer = optim.AdamW(params, lr=float(optimizer_cfg.lr), weight_decay=float(optimizer_cfg.weight_decay), eps=float(optimizer_cfg.eps), amsgrad=False, fused=sloppy, foreach=not sloppy)
+        optimizer = optim.AdamW(params, lr=float(optimizer_cfg.lr), weight_decay=float(optimizer_cfg.weight_decay), eps=float(optimizer_cfg.eps), amsgrad=False, fused=fast, foreach=not fast)
 
         optimizers.append(optimizer)
-        scalers.append(GradScaler('cuda', enabled=sloppy))
+        scalers.append(GradScaler('cuda', enabled=fast))
 
     assert len(optimizers) > 0
-    logger.info(f"{sloppy=}")
 
     if config.loaded_optimizer_dict is not False:
         optimizer.load_state_dict(config.loaded_optimizer_dict)
@@ -242,7 +232,7 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
             model.create_horizon_mapping(train_index_dataset)
         train_loader, val_loader, train_sampler, val_sampler = create_dataloader(train_index_dataset, val_index_dataset, rank, world_size, config.batch_size, shuffle=config.shuffle, drop_last=is_diffusion)
 
-    if sloppy:
+    if fast:
         torch._dynamo.reset()
         if darp:
             model.compile()
@@ -256,10 +246,8 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
     action_scale = action_scaler.scale_torch
 
     import sys
-    print(f"[Rank {rank}] Entering DDP constructor...", flush=True)
     if world_size > 1:
         model = DistributedDataParallel(model, device_ids=[rank])
-    print(f"[Rank {rank}] DDP constructor finished.", flush=True)
 
     best_val_loss = float('inf')
     early_stopping_patience = 13
@@ -285,14 +273,14 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
                     states = states.reshape(len(states), -1)
                     actions = actions.reshape(len(actions), -1)
                     states = torch.hstack((states, actions))
-            elif is_diffusion or policy_cfg['model_config']['retrieval_config'].get('ic_regularizer', False):
+            elif is_diffusion:
                 if isinstance(train_loader.dataset, ChunkingWrapper):
                     states = states.to(device)
                     states = torch.hstack((states.reshape(len(states), -1), actions.reshape(len(states), -1)))
                 else:
                     states = torch.hstack((torch.tensor(states, device=device).unsqueeze(1), actions.reshape(len(states), -1)))
 
-            with autocast('cuda', dtype=torch.bfloat16, enabled=sloppy):
+            with autocast('cuda', dtype=torch.bfloat16, enabled=fast):
                 if loss_from_forward:
                     loss = model(states)
                 elif config.loss_fn == "log_likelihood":
@@ -300,9 +288,6 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
                     loss = (-distribution.log_prob(actions)).mean()
                 else:
                     predicted_actions = model(states)
-                    if config.loss_fn == "cross_entropy":
-                        actions = actions.squeeze()
-
                     loss = criterion(predicted_actions, actions)
 
             for optimizer, scaler in zip(optimizers, scalers):
@@ -364,8 +349,6 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
                         loss = model(states)
                     else:
                         predicted_actions = model(states)
-                        if config.loss_fn == "cross_entropy":
-                            actions = actions.squeeze()
                         loss = criterion(predicted_actions, actions)
 
                     val_loss += loss.detach()
@@ -406,7 +389,7 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
                     logger.info(f'Recommend early stopping after {epoch+1 - early_stopping_patience} epochs')
                     model.load_state_dict(best_check['model'])
 
-                    save_model(model, optimizer, train_loader, config.model_name, sloppy=sloppy, darp=darp, is_diffusion=is_diffusion, ema=ema if is_diffusion else None)
+                    save_model(model, optimizer, train_loader, config.model_name, fast=fast, darp=darp, is_diffusion=is_diffusion, ema=ema if is_diffusion else None)
 
                     if eval_epochs == 0:
                         best_score = best_val_loss
@@ -432,7 +415,7 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
         if eval_epochs != 0 and (epoch > 0 or eval_epochs == 1) and ((epoch + 1) % eval_epochs == 0) and epoch + 1 >= start_eval_epoch:
             if rank == 0:
                 logger.info(f"Evaluating epoch {epoch + 1}...")
-                save_model(model, optimizer, train_loader, config.model_name, sloppy=sloppy, darp=darp, is_diffusion=is_diffusion, ema=ema if is_diffusion else None)
+                save_model(model, optimizer, train_loader, config.model_name, fast=fast, darp=darp, is_diffusion=is_diffusion, ema=ema if is_diffusion else None)
 
             # Crucial - have to unwrap module or batched eval will fail
             if world_size > 1:
@@ -479,12 +462,11 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
                 eval_model = ModelFactory(model_cfg).create()
                 free_memory, total_memory = torch.cuda.mem_get_info()
                 used_memory = total_memory - free_memory
-                logger.debug(f"Allocated memory pre-eval: {(used_memory / (1024**2)):.2f} / {(total_memory / (1024**2)):.2f} MB")
                 checkpoint = torch.load(config.model_name, weights_only=False)
                 eval_model.load_state_dict(checkpoint['model'])
                 eval_model.to(env_cfg['device'])
                 eval_model.eval()
-                if sloppy:
+                if fast:
                    torch._dynamo.reset()
                    if darp:
                        eval_model.compile()
@@ -508,7 +490,7 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
             model.train()
 
     if rank == 0:
-        save_model(model, optimizer, train_loader, config.model_name, sloppy=sloppy, darp=darp, is_diffusion=is_diffusion, ema=ema if is_diffusion else None)
+        save_model(model, optimizer, train_loader, config.model_name, fast=fast, darp=darp, is_diffusion=is_diffusion, ema=ema if is_diffusion else None)
 
     if world_size > 1 and start_process_group:
         dist.destroy_process_group()
@@ -517,7 +499,7 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
 
     return model, best_score
 
-def launch_train_parallel(env_cfg, policy_cfg, force_nonparallel=False, eval_epochs=0, start_eval_epoch=0, sloppy=False):
+def launch_train_parallel(env_cfg, policy_cfg, force_nonparallel=False, eval_epochs=0, start_eval_epoch=0, fast=False):
     import torch.multiprocessing as mp
 
     world_size = torch.cuda.device_count()
@@ -530,9 +512,9 @@ def launch_train_parallel(env_cfg, policy_cfg, force_nonparallel=False, eval_epo
         os.environ['MASTER_PORT'] = master_port
         os.environ['TORCH_DISTRIBUTED_MASTER_PORT'] = master_port
         logger.info(f"Training with {world_size} GPUs")
-        mp.spawn(train_model, args=(world_size, env_cfg, policy_cfg, eval_epochs, start_eval_epoch, sloppy), nprocs=world_size)
+        mp.spawn(train_model, args=(world_size, env_cfg, policy_cfg, eval_epochs, start_eval_epoch, fast), nprocs=world_size)
     else:
-        train_model(0, 1, env_cfg, policy_cfg, eval_epochs, start_eval_epoch, sloppy)
+        train_model(0, 1, env_cfg, policy_cfg, eval_epochs, start_eval_epoch, fast)
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
@@ -546,7 +528,7 @@ if __name__ == "__main__":
     parser.add_argument("--eval-trials", type=int, default=100)
     parser.add_argument("--start-eval-epoch", type=int, default=0)
     parser.add_argument("--trials", type=int, default=100)
-    parser.add_argument("--sloppy", action="store_true")
+    parser.add_argument("--fast", action="store_true")
     args, _ = parser.parse_known_args()
 
     with open(args.env_config_path, 'r') as f:
@@ -558,6 +540,6 @@ if __name__ == "__main__":
     world_size = int(os.environ.get('WORLD_SIZE', 1))
     if world_size > 1 and not args.force_nonparallel:
         logger.info(f"Training with {world_size} GPUs")
-        train_model(rank, world_size, env_cfg, policy_cfg, eval_epochs=args.eval_epochs, eval_trials=args.eval_trials, start_eval_epoch=args.start_eval_epoch, sloppy=args.sloppy)
+        train_model(rank, world_size, env_cfg, policy_cfg, eval_epochs=args.eval_epochs, eval_trials=args.eval_trials, start_eval_epoch=args.start_eval_epoch, fast=args.fast)
     else:
-        train_model(0, 1, env_cfg, policy_cfg, eval_epochs=args.eval_epochs, eval_trials=args.eval_trials, start_eval_epoch=args.start_eval_epoch, sloppy=args.sloppy)
+        train_model(0, 1, env_cfg, policy_cfg, eval_epochs=args.eval_epochs, eval_trials=args.eval_trials, start_eval_epoch=args.start_eval_epoch, fast=args.fast)

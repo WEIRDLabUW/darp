@@ -21,18 +21,11 @@ class FusionWrapper(ModelWrapper):
             input_lens.append(model.input_len)
             output_lens.append(model.output_len)
 
-        logger.debug(f"{all_identity=}")
-        logger.debug(f"{all_scale_identity=}")
         self.all_identity = all_identity
         self.all_scale_identity = all_scale_identity
 
-
-        logger.debug(f"{input_lens}")
-        logger.debug(f"{output_lens}")
         self.input_splits = torch.cumsum(torch.tensor(input_lens), dim=0)
         self.output_splits = torch.cumsum(torch.tensor(output_lens), dim=0)
-        logger.debug(f"{self.input_splits}")
-        logger.debug(f"{self.output_splits}")
 
         combination_model.model_config.input_len = self.output_splits[-1]
         self.combination_model = combination_model.create()

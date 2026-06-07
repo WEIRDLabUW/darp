@@ -21,14 +21,10 @@ def set_attributes_from_args(obj, default_config, args):
     for key, value in config_dict.items():
         if key in curr_args:
             curr_args[key] = value
-        else:
-            print(f"Key {key} not recognized!")
 
     for key, value in args.items():
         if key in curr_args:
             curr_args[key] = args[key]
-        else:
-            print(f"Key {key} not recognized!")
 
     for key, value in curr_args.items():
         assert value != None, f"{key} must be explicitly set, it has no default!"
@@ -44,16 +40,14 @@ def get_scalers_from_data_path(path, darp=False):
     act_scaler.fit(np.concatenate([traj['actions'] for traj in expert_data]))
 
     if darp:
-        action_mean = act_scaler.mean_np
-        delta_mean = np.zeros_like(obs_scaler.mean_np)
+        action_mean = act_scaler.mean_torch
+        delta_mean = torch.zeros_like(obs_scaler.mean_torch)
 
-        obs_scaler.mean_np = np.hstack((np.zeros_like(obs_scaler.mean_np), action_mean, delta_mean))
+        obs_scaler.mean_torch = torch.cat((torch.zeros_like(obs_scaler.mean_torch), action_mean, delta_mean))
 
-        action_std = act_scaler.scale_np
-        delta_std = np.ones_like(obs_scaler.scale_np) * np.sqrt(2)
-        obs_scaler.scale_np = np.hstack((np.ones_like(obs_scaler.scale_np), action_std, delta_std))
-        obs_scaler.mean_torch = torch.as_tensor(obs_scaler.mean_np)
-        obs_scaler.scale_torch = torch.as_tensor(obs_scaler.scale_np)
+        action_std = act_scaler.scale_torch
+        delta_std = torch.ones_like(obs_scaler.scale_torch) * np.sqrt(2)
+        obs_scaler.scale_torch = torch.cat((torch.ones_like(obs_scaler.scale_torch), action_std, delta_std))
 
     return obs_scaler, act_scaler
 
@@ -81,7 +75,7 @@ def get_min_max_len(path, norm_obs=False):
     if norm_obs:
         obs_scaler = FastScaler()
         obs_scaler.fit(obs)
-        obs = obs_scaler.transform(obs)
+        obs = obs_scaler.transform(obs).cpu().numpy()
 
     return torch.tensor(np.min(actions, axis=0)), torch.tensor(np.max(actions, axis=0)), len(actions[0]), torch.tensor(np.min(obs, axis=0)), torch.tensor(np.max(obs, axis=0)), len(obs[0])
 

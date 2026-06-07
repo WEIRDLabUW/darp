@@ -73,7 +73,6 @@ if [ "$ROBOSUITE" = "true" ]; then
   pip install -e cloned/robosuite
   pip install -e cloned/robomimic
   pip install mujoco==2.3.2
-  pip install numba==0.58.1
 else
   pip install -e cloned/robocasa/robosuite_casa/robosuite/
   pip install -e cloned/robocasa/mimicgen_casa/

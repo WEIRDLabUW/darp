@@ -5,6 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from util import create_matrices
 from typing import Tuple
+from logging_util import logger
 
 class IndexActionBCDataset(Dataset):
     def __init__(self, dataset_path, act_dataset=None):
@@ -55,7 +56,7 @@ class IndexActionBCDataset(Dataset):
 
 class BCExpertDataset(Dataset):
     def __init__(self, dataset_path, rgb_dataset_path=None):
-        print(f"Creating BCExpertDataset with data at {dataset_path}")
+        logger.info(f"Creating BCExpertDataset with data at {dataset_path}")
         self.obs_matrix, self.act_matrix, self.traj_starts = create_matrices(pickle.load(open(dataset_path, 'rb')), use_torch=True)
 
         self.obs = torch.cat([torch.as_tensor(obs) for obs in self.obs_matrix], dim=0)
@@ -95,8 +96,6 @@ class BCExpertDataset(Dataset):
         obs_combined = torch.cat((torch.stack(prop_parts), torch.stack(rgb_parts)), dim=-1)
 
         return obs_combined, acts
-
-
 
 class ChunkingWrapper(Dataset):
     def __init__(self, obs_horizon, act_horizon, wrapped: Dataset, fill_method="repeat"):

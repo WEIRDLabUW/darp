@@ -100,17 +100,3 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     logger.critical("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
 
 sys.excepthook = handle_exception
-
-def print_memory_summary(message, gpu=0, verbose=False):
-    import torch
-    free_memory, total_memory = torch.cuda.mem_get_info(gpu)
-    used_memory = total_memory - free_memory
-    logger.debug(f"{message}: {(used_memory / (1024**2)):.2f} / {(total_memory / (1024**2)):.2f} MB")
-    if verbose:
-        logger.debug(torch.cuda.memory_summary(device=gpu, abbreviated=False))
-        for obj in gc.get_objects():
-            try:
-                if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-                    logger.debug(f"Type: {type(obj)} | Size: {obj.size()} | Usage: {obj.element_size() * obj.nelement() / 1024**2:.2f} MB")
-            except:
-                pass

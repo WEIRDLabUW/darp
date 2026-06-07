@@ -26,13 +26,12 @@ class PersistentProcessPool:
         self.workers = []
         self.start_trial = start_trial
         self.rank = rank
-        self.lock = mp.Lock()
 
         for i in range(num_workers):
             trials = list(range((i * trials_per_worker) + start_trial, min((i + 1) * trials_per_worker + start_trial, total_trials + start_trial)))
             p = mp.Process(target=env_worker, 
                           args=(i, trials, self.config, self.command_queues[i], 
-                               self.result_queue, rank, True, self.lock))
+                               self.result_queue, rank, True))
             p.start()
             self.workers.append(p)
 
@@ -87,10 +86,7 @@ def single_trial_eval(config, agent, env, trial, reset, darp):
     episode_reward = 0
     done = False
     while not (steps > 0 and (done or eval_over(steps, config, env))):
-        if True:
-            height, width = 1024, 1024
-        else:
-            height, width = 224, 224
+        height, width = 224, 224
 
         if len(cam_names) > 0:
             full_frame = np.empty((height, 0, 3), dtype=np.uint8)
@@ -119,9 +115,9 @@ def single_trial_eval(config, agent, env, trial, reset, darp):
 
         with torch.no_grad():
             if not (darp and agent.retrieval_agent.lookback > 1):
-                action, obs_history = get_action_from_obs_batched(config, agent, [env], [observation], [full_frame], obs_history=obs_history, numpy_action=False, is_first_ob=(steps == 0))
+                action, obs_history = get_action_from_obs_batched(config, agent, [env], [observation], [full_frame], obs_history=obs_history)
             else:
-                action, _ = get_action_from_obs_batched(config, agent, [env], [observation], [full_frame], obs_history=None, numpy_action=False, is_first_ob=(steps == 0))
+                action, _ = get_action_from_obs_batched(config, agent, [env], [observation], [full_frame], obs_history=None)
 
                 observation = get_processed_obs(observation, full_frame, env, agent, config, config['type'])[0]
                 if obs_history.shape[2] == 0:
@@ -145,7 +141,7 @@ def single_trial_eval(config, agent, env, trial, reset, darp):
             episode_reward = max(episode_reward, reward)
         else:
             episode_reward += reward
-            if is_robosuite and ((not config.get('reward_shaping', False) and episode_reward > 0) or (config.get('reward_shaping', False) and done)):
+            if is_robosuite and episode_reward > 0:
                 break
 
         steps += 1
@@ -161,14 +157,14 @@ def single_trial_eval(config, agent, env, trial, reset, darp):
 
     return episode_reward, success
 
-def prepare_env(config, trial=None, gpu_id=0, lock=None):
+def prepare_env(config, trial=None, gpu_id=0):
     import robosuite.renderers.context.egl_context as egl_context
     egl_context.EGL_DISPLAY = None
 
     import robomimic
 
     set_seed(42)
-    env = construct_env(config, gpu_id=gpu_id, seed=trial, lock=lock)
+    env = construct_env(config, gpu_id=gpu_id, seed=trial)
     env_name = config['name']
     is_robosuite = config.get('robosuite', False)
 
@@ -183,24 +179,10 @@ def prepare_env(config, trial=None, gpu_id=0, lock=None):
 
     return env
 
-def env_worker(worker_id, trials, config, command_queue, result_queue, local_rank, reset, lock):
+def env_worker(worker_id, trials, config, command_queue, result_queue, local_rank, reset):
     import os
     import sys
     import logging
-
-    # Silence all output from this process (local to this child process only)
-    devnull = os.open(os.devnull, os.O_WRONLY)
-    os.dup2(devnull, sys.stdout.fileno())
-    os.dup2(devnull, sys.stderr.fileno())
-    
-    # Remove local logging handlers to stop writing to shared log files
-    root_logger = logging.getLogger()
-    for handler in root_logger.handlers[:]:
-        root_logger.removeHandler(handler)
-    
-    # Reset local excepthook to stop custom logging of exceptions in this child
-    sys.excepthook = sys.__excepthook__
-    logging.disable(logging.CRITICAL)
 
     p = psutil.Process()
     available_cpus = list(os.sched_getaffinity(0))
@@ -228,7 +210,7 @@ def env_worker(worker_id, trials, config, command_queue, result_queue, local_ran
                 if config['name'] == "maze2d-umaze-v1":
                     observation = np.hstack((env._target, observation))
 
-                if is_robosuite and not config.get('reward_shaping', False) and reward > 0:
+                if is_robosuite and reward > 0:
                     done = True
 
                 done = done or eval_over(step_num, config, env)
@@ -270,16 +252,14 @@ def env_worker(worker_id, trials, config, command_queue, result_queue, local_ran
                     result_queue.put((worker_id, 'worker_unneeded', None))
                     continue
                 elif is_robosuite and env is not None and initial_states[trial_idx] is not None:
-                    logger.debug(f"{local_rank}:{worker_id} loading state for trial {trials[trial_idx]}")
                     env.reset_to(initial_states[trial_idx])
                 elif config['name'] == "push_t" and env is not None:
-                    env._set_state(initial_state)
+                    env._set_state(initial_states[trial_idx])
                 else:
                     if env is not None:
                         del env
 
-                    logger.debug(f"{local_rank}:{worker_id} creating env for trial {trials[trial_idx]} for the first time")
-                    env = prepare_env(config, trial=trials[trial_idx], gpu_id=local_rank, lock=lock)
+                    env = prepare_env(config, trial=trials[trial_idx], gpu_id=local_rank)
 
                     if is_robosuite:
                         env.reset()
@@ -327,7 +307,7 @@ def env_worker(worker_id, trials, config, command_queue, result_queue, local_ran
                 result_queue.put((worker_id, 'frame', frame))
                 
     except Exception as e:
-        logger.debug(f"{local_rank}:{worker_id} ERROR: {traceback.format_exc()}")
+        logger.critical(f"{local_rank}:{worker_id} ERROR: {traceback.format_exc()}")
         result_queue.put((worker_id, 'error', traceback.format_exc()))
 
 def batched_eval(config, agent, trials=10, results=None, reset=False, darp=True, trials_per_worker=1):
@@ -364,7 +344,6 @@ def batched_eval(config, agent, trials=10, results=None, reset=False, darp=True,
     obs_horizon = getattr(agent, "obs_horizon", 1)
         
     if persistent_processes[local_rank] == None:
-        logger.info("Creating PersistentProcessPool")
         persistent_processes[local_rank] = PersistentProcessPool(config, start_trial, my_num_workers, local_rank, trials_per_worker, my_num_trials)
 
     command_queues = persistent_processes[local_rank].command_queues
@@ -389,7 +368,6 @@ def batched_eval(config, agent, trials=10, results=None, reset=False, darp=True,
             try:
                 worker_id, msg_type, data = result_queue.get()
             except queue.Empty:
-                logger.debug("QUEUE EMPTY")
                 break
 
             if msg_type == 'env_created':
@@ -402,86 +380,73 @@ def batched_eval(config, agent, trials=10, results=None, reset=False, darp=True,
                 envs_created += 1
                 logger.debug(f"{rank} Environment {worker_id + 1 + start_trial}/{trials} unneeded, {(envs_created/my_num_workers) * 100:.0f}% of my envs created")
             elif msg_type == 'error':
-                logger.error(f"Error in worker {worker_id}: {data}. Will retry.")
+                logger.error(f"Error in worker {worker_id}: {data}.")
 
         # [B, H, O]
         if (darp and agent.retrieval_agent.lookback > 1) or obs_horizon > 1:
             obs_history = torch.empty((my_num_workers, 0, 0), device=local_rank)
 
-        try:
-            steps = 0
+        steps = 0
 
-            while not (steps > 0 and np.all(dones)):
-                frames = None
-                if len(cam_names) > 0:
-                    for i, com_queue in enumerate(command_queues):
-                        if not dones[i]:
-                            for camera in cam_names:
-                                crop_corners = np.array(crops.get(camera, [[0, 0], [1.0, 1.0]]))
-                                com_queue.put(('get_frame', (camera, crop_corners, width, height)))
-                    frames = [[] for _ in range(my_num_workers)]
-                    expected_frames = sum(len(cam_names) for i in range(my_num_workers) if not dones[i])
-                    for _ in range(expected_frames):
-                        worker_id, msg_type, frame = result_queue.get()
-                        frames[worker_id].append(frame)
-                    
-                    for i in range(my_num_workers):
-                        if frames[i]:
-                            frames[i] = np.hstack(frames[i])
+        while not (steps > 0 and np.all(dones)):
+            frames = None
+            if len(cam_names) > 0:
+                for i, com_queue in enumerate(command_queues):
+                    if not dones[i]:
+                        for camera in cam_names:
+                            crop_corners = np.array(crops.get(camera, [[0, 0], [1.0, 1.0]]))
+                            com_queue.put(('get_frame', (camera, crop_corners, width, height)))
+                frames = [[] for _ in range(my_num_workers)]
+                expected_frames = sum(len(cam_names) for i in range(my_num_workers) if not dones[i])
+                for _ in range(expected_frames):
+                    worker_id, msg_type, frame = result_queue.get()
+                    frames[worker_id].append(frame)
+                
+                for i in range(my_num_workers):
+                    if frames[i]:
+                        frames[i] = np.hstack(frames[i])
 
-                active_envs = [i for i in range(my_num_workers) if not dones[i]]
-                if not active_envs:
-                    break
-                    
-                active_observations = [observations[i] for i in active_envs]
-                active_frames = [frames[i] for i in active_envs] if frames else None
+            active_envs = [i for i in range(my_num_workers) if not dones[i]]
+            if not active_envs:
+                break
+                
+            active_observations = [observations[i] for i in active_envs]
+            active_frames = [frames[i] for i in active_envs] if frames else None
 
-                with torch.no_grad():
-                    if (darp and agent.retrieval_agent.lookback > 1) or obs_horizon > 1:
-                        actions, new_obs_history = get_action_from_obs_batched(config, agent, active_envs, active_observations, active_frames, obs_history=obs_history[active_envs])
-                        if steps == 0:
-                            obs_history = torch.zeros((my_num_workers, 1, new_obs_history.shape[-1]), device=agent.device)
-                            obs_history[active_envs] = new_obs_history
-                        else:
-                            full_new_obs_history = torch.zeros((my_num_workers, 1, new_obs_history.shape[-1]), device=agent.device)
-                            full_new_obs_history[active_envs] = new_obs_history[:, -1].unsqueeze(1)
-                            obs_history = torch.cat((obs_history, full_new_obs_history), dim=1)
+            with torch.no_grad():
+                if (darp and agent.retrieval_agent.lookback > 1) or obs_horizon > 1:
+                    actions, new_obs_history = get_action_from_obs_batched(config, agent, active_envs, active_observations, active_frames, obs_history=obs_history[active_envs])
+                    if steps == 0:
+                        obs_history = torch.zeros((my_num_workers, 1, new_obs_history.shape[-1]), device=agent.device)
+                        obs_history[active_envs] = new_obs_history
                     else:
-                        actions, _ = get_action_from_obs_batched(config, agent, active_envs, active_observations, active_frames)
+                        full_new_obs_history = torch.zeros((my_num_workers, 1, new_obs_history.shape[-1]), device=agent.device)
+                        full_new_obs_history[active_envs] = new_obs_history[:, -1].unsqueeze(1)
+                        obs_history = torch.cat((obs_history, full_new_obs_history), dim=1)
+                else:
+                    actions, _ = get_action_from_obs_batched(config, agent, active_envs, active_observations, active_frames)
 
-                for idx, action in zip(active_envs, actions):
-                    command_queues[idx].put(('step', (action, steps)))
+            for idx, action in zip(active_envs, actions):
+                command_queues[idx].put(('step', (action, steps)))
 
-                for i in range(len(active_envs)):
-                    worker_id, msg_type, result = result_queue.get()
-                    if not isinstance(result, dict):
-                        logger.error(f"Step failed on worker {worker_id} with message {result}")
-                    observations[worker_id] = result['observation']
-                    if env_name == "push_t":
-                        episode_rewards[worker_id] = max(episode_rewards[worker_id], result['reward'])
-                    else:
-                        episode_rewards[worker_id] += result['reward']
-                    dones[worker_id] = result['done']
+            for i in range(len(active_envs)):
+                worker_id, msg_type, result = result_queue.get()
+                if not isinstance(result, dict):
+                    logger.error(f"Step failed on worker {worker_id} with message {result}")
+                observations[worker_id] = result['observation']
+                if env_name == "push_t":
+                    episode_rewards[worker_id] = max(episode_rewards[worker_id], result['reward'])
+                else:
+                    episode_rewards[worker_id] += result['reward']
+                dones[worker_id] = result['done']
 
-                steps += 1
-
-
-        finally:
-            pass
-            # for queue in command_queues:
-            #     queue.put(None)  # Shutdown signal
-            #
-            # for worker in workers:
-            #     worker.join()
+            steps += 1
 
         if world_size > 1:
-            # Create tensors to gather results
             all_rewards = [None for _ in range(world_size)]
 
-            # Gather rewards and successes
             dist.all_gather_object(all_rewards, episode_rewards)
 
-            # Flatten rewards list and sum successes
             all_episode_rewards.extend([r for proc_rewards in all_rewards for r in proc_rewards])
         else:
             all_episode_rewards.extend(episode_rewards)
@@ -514,14 +479,11 @@ def parallel_eval(config, nn_agent, trials=10, results=None, darp=False):
         torch.cuda.set_device(local_rank)
         nn_agent = nn_agent.to(local_rank)
 
-    # Construct environment on each process
     set_seed(42)
-    
-    # Divide trials among processes
+
     trials_per_proc = trials // world_size
     remainder = trials % world_size
 
-    # Distribute remaining trials evenly
     my_num_trials = trials_per_proc + (1 if rank < remainder else 0)
     start_trial = rank * trials_per_proc + min(rank, remainder)
 
@@ -536,7 +498,6 @@ def parallel_eval(config, nn_agent, trials=10, results=None, darp=False):
 
     logger.info(f"GPU {local_rank} taking trials {start_trial + 1} to {end_trial}")
 
-    # Run assigned trials
     episode_rewards = []
     successes = 0
 
@@ -546,17 +507,13 @@ def parallel_eval(config, nn_agent, trials=10, results=None, darp=False):
         episode_rewards.append(episode_reward)
         successes += success
 
-    # Gather results from all processes
     if world_size > 1:
-        # Create tensors to gather results
         all_rewards = [None for _ in range(world_size)]
         all_successes = [None for _ in range(world_size)]
 
-        # Gather rewards and successes
         dist.all_gather_object(all_rewards, episode_rewards)
         dist.all_gather_object(all_successes, successes)
 
-        # Flatten rewards list and sum successes
         episode_rewards = [r for proc_rewards in all_rewards for r in proc_rewards]
         successes = sum(all_successes)
 
@@ -570,7 +527,6 @@ def parallel_eval(config, nn_agent, trials=10, results=None, darp=False):
         logger.debug(episode_rewards)
         logger.info(f"mean {round(np.mean(episode_rewards), 2)}, std {round(np.std(episode_rewards), 2)}")
 
-    # Wait for all processes
     if world_size > 1:
         dist.barrier()
 

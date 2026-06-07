@@ -1,7 +1,7 @@
 import pickle
 import os
 
-from nn_util import construct_env, reset_vision_ob, get_proprio, env_to_rgb_array, hide_robot, crop_obs_for_env
+from util import construct_env, reset_vision_ob, env_to_rgb_array, crop_obs_for_env
 os.environ["D4RL_SUPPRESS_IMPORT_ERROR"] = "1"
 import numpy as np
 import gym
@@ -11,9 +11,7 @@ import yaml
 
 import cv2
 from rgb_arrays_to_mp4 import rgb_arrays_to_mp4
-import matplotlib.pyplot as plt
 import math
-import time
 
 parser = ArgumentParser()
 parser.add_argument("env_config_path", help="Path to environment config file")
