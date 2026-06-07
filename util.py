@@ -18,9 +18,7 @@ class Dataset:
     name: str
     obs_scaler: FastScaler | None # None if not normalized
     act_scaler: FastScaler
-    rot_indices: np.ndarray | torch.Tensor
     weights: np.ndarray | torch.Tensor
-    non_rot_indices: np.ndarray | torch.Tensor
     obs_matrix: List
     act_matrix: List
     traj_starts: np.ndarray | torch.Tensor
@@ -28,7 +26,7 @@ class Dataset:
     flattened_act_matrix: np.ndarray | torch.Tensor
     processed_obs_matrix: np.ndarray | torch.Tensor
 
-def load_and_scale_data(path, rot_indices, weights, ob_type='state', scale=True, bc=False, device='cuda'):
+def load_and_scale_data(path, weights, ob_type='state', scale=True, bc=False, device='cuda'):
     expert_data = load_expert_data(path)
     
     is_numpy = isinstance(expert_data[0]['observations'][0], np.ndarray)
@@ -38,19 +36,9 @@ def load_and_scale_data(path, rot_indices, weights, ob_type='state', scale=True,
     else:
         observations = torch.concatenate([traj['observations'] for traj in expert_data])
 
-    rot_indices = torch.tensor(rot_indices, dtype=torch.int32)
-    # Separate non-rotational dimensions
-    non_rot_indices = torch.tensor([i for i in range(observations.shape[-1]) if i not in rot_indices], dtype=torch.int32)
-
     if scale:
         obs_scaler = FastScaler()
         obs_scaler.fit(observations)
-
-        if ob_type == 'retrieval':
-            obs_scaler.mean_np[rot_indices] = 0.0
-            obs_scaler.mean_torch[rot_indices] = 0.0
-            obs_scaler.scale_np[rot_indices] = 1.0
-            obs_scaler.scale_torch[rot_indices] = 1.0
 
         for traj in expert_data:
             traj['observations'] = obs_scaler.transform(torch.from_numpy(traj['observations']) if is_numpy else traj['observations'])
@@ -75,7 +63,7 @@ def load_and_scale_data(path, rot_indices, weights, ob_type='state', scale=True,
         
         if len(weights) > 0:
             weights = torch.as_tensor(weights, dtype=torch.float32, device=device)
-            processed_obs_matrix = flattened_obs_matrix[:, non_rot_indices] * torch.as_tensor(weights[non_rot_indices], dtype=flattened_obs_matrix[0][0].dtype)
+            processed_obs_matrix = flattened_obs_matrix * torch.as_tensor(weights, dtype=flattened_obs_matrix[0][0].dtype)
         else:
             weights = torch.ones(obs_matrix[0][0].shape[0], dtype=torch.float32, device=device)
             processed_obs_matrix = flattened_obs_matrix
@@ -89,7 +77,7 @@ def load_and_scale_data(path, rot_indices, weights, ob_type='state', scale=True,
         processed_obs_matrix = None
         traj_starts = None
         
-    return Dataset(new_path, obs_scaler, act_scaler, rot_indices, weights, non_rot_indices, obs_matrix, act_matrix, traj_starts, flattened_obs_matrix, flattened_act_matrix, processed_obs_matrix)
+    return Dataset(new_path, obs_scaler, act_scaler, weights, obs_matrix, act_matrix, traj_starts, flattened_obs_matrix, flattened_act_matrix, processed_obs_matrix)
 
 def find_free_port():
     import socket

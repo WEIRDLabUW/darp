@@ -4,17 +4,6 @@ import torch
 from util import load_and_scale_data, set_seed
 from logging_util import logger
 
-def compute_distance_with_rot(curr_ob: torch.Tensor, flattened_obs_matrix: torch.Tensor, rot_weights: torch.Tensor):
-    delta = torch.abs(curr_ob - flattened_obs_matrix)
-    wrapped_delta = torch.min(delta, 2 * torch.pi - delta) / (2 * torch.pi)
-    neighbor_vec_distances = wrapped_delta * rot_weights
-    
-    squared_dists = torch.sum(neighbor_vec_distances ** 2, dim=1)
-    
-    neighbor_distances = torch.sqrt(squared_dists)
-    
-    return neighbor_distances
-
 def compute_accum_distance(nearest_neighbors, max_lookbacks, obs_history, sequence_lengths, flattened_obs_matrix, decay_factors, distance_metric):
     b, m = nearest_neighbors.shape
     device = nearest_neighbors.device
@@ -91,7 +80,6 @@ class NNAgent:
 
                         self.datasets[dataset] = load_and_scale_data(
                             path,
-                            env_cfg[dataset].get('rot_indices', []),
                             env_cfg[dataset].get('weights', []),
                             use_torch=True,
                             scale=False
@@ -100,7 +88,6 @@ class NNAgent:
                 expert_data_path = env_cfg['demo_pkl']
                 one_dataset = load_and_scale_data(
                     expert_data_path,
-                    env_cfg.get('rot_indices', []),
                     env_cfg.get('weights', []),
                     ob_type=env_cfg.get('type', 'state'),
                     use_torch=True,
@@ -109,9 +96,6 @@ class NNAgent:
 
                 for dataset in ['retrieval', 'state', 'delta_state']:
                     self.datasets[dataset] = one_dataset
-
-        self.rot_indices = self.datasets['retrieval'].rot_indices
-        self.non_rot_indices = self.datasets['retrieval'].non_rot_indices
 
         self.candidates = policy_cfg.get('k', 100)
         self.lookback = policy_cfg.get('lookback', 10)
@@ -144,7 +128,6 @@ class NNAgentEuclidean(NNAgent):
 
         current_ob = current_ob[:, -1]
 
-        # If we have elements in our observation space that wraparound (rotations), we can't just do direct Euclidean distance
         if not hasattr(self, '_weighted_ob_buffer') or self._weighted_ob_buffer.shape[0] != batch_size:
             self._weighted_ob_buffer = torch.empty(batch_size, current_ob.shape[-1], device=current_ob.device, dtype=current_ob.dtype)
 
@@ -156,12 +139,9 @@ class NNAgentEuclidean(NNAgent):
         )
 
         if self.distance_metric == "cosine":
-            all_distances = 1 - torch.nn.functional.cosine_similarity(self.datasets['retrieval'].processed_obs_matrix[:, self.non_rot_indices].unsqueeze(0), self._weighted_ob_buffer[:, self.non_rot_indices].unsqueeze(1), dim=2)
+            all_distances = 1 - torch.nn.functional.cosine_similarity(self.datasets['retrieval'].processed_obs_matrix.unsqueeze(0), self._weighted_ob_buffer.unsqueeze(1), dim=2)
         else:
-            all_distances = torch.sqrt(torch.sum(torch.pow(torch.subtract(self.datasets['retrieval'].processed_obs_matrix[:, self.non_rot_indices].unsqueeze(0), self._weighted_ob_buffer[:, self.non_rot_indices].unsqueeze(1)), 2), dim=2))
-
-        if len(self.rot_indices) > 0:
-            all_distances += compute_distance_with_rot(self._weighted_ob_buffer[self.rot_indices], self.datasets['retrieval'].processed_obs_matrix[:, self.rot_indices], self.datasets['retrieval'].weights[self.datasets['retrieval'].rot_indices])
+            all_distances = torch.sqrt(torch.sum(torch.pow(torch.subtract(self.datasets['retrieval'].processed_obs_matrix.unsqueeze(0), self._weighted_ob_buffer.unsqueeze(1)), 2), dim=2))
 
         # When training, don't include the state itself
         if self.method == NN_METHOD.KNN or self.method == NN_METHOD.KNN_AND_DELTA:
@@ -236,8 +216,6 @@ class NNAgentEuclidean(NNAgent):
 
             dataset.obs_scaler.to_device(device)
             dataset.act_scaler.to_device(device)
-            if isinstance(dataset.rot_indices, torch.Tensor):
-                dataset.rot_indices = dataset.rot_indices.to(device)
             if isinstance(dataset.weights, torch.Tensor):
                 dataset.weights = dataset.weights.to(device)
             if isinstance(dataset.traj_starts, torch.Tensor):
@@ -268,7 +246,6 @@ class NNAgentEuclideanStandardized(NNAgentEuclidean):
 
                     self.datasets[dataset] = load_and_scale_data(
                         path,
-                        env_cfg[dataset].get('rot_indices', []),
                         env_cfg[dataset].get('weights', []),
                         ob_type=env_cfg[dataset].get('type', 'state'),
                         device=env_cfg['device']
@@ -278,7 +255,6 @@ class NNAgentEuclideanStandardized(NNAgentEuclidean):
             for dataset in ['retrieval', 'state', 'delta_state']:
                 one_dataset = load_and_scale_data(
                     expert_data_path,
-                    env_cfg.get('rot_indices', []),
                     env_cfg.get('weights', []),
                     ob_type=env_cfg.get('type', 'state'),
                     device=env_cfg['device']
@@ -293,10 +269,7 @@ class NNAgentEuclideanStandardized(NNAgentEuclidean):
 
         if normalize:
             dataset = self.datasets['retrieval']
-            if is_batched:
-                current_ob[:, :, dataset.non_rot_indices] = dataset.obs_scaler.transform(current_ob[:, :, dataset.non_rot_indices])
-            else:
-                current_ob[:, dataset.non_rot_indices] = dataset.obs_scaler.transform(current_ob[:, dataset.non_rot_indices])
+            current_ob = dataset.obs_scaler.transform(current_ob)
 
         return super().get_neighbors(current_ob)
 
