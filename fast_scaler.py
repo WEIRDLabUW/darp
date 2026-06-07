@@ -10,9 +10,23 @@ class FastScaler:
             if len(X) > 0 and isinstance(X[0], torch.Tensor):
                 X = torch.stack(X)
             else:
-                X = torch.tensor(X, dtype=torch.float32)
-        elif not isinstance(X, torch.Tensor):
-            X = torch.tensor(X, dtype=torch.float32)
+                X = np.asarray(X)
+
+        if not isinstance(X, torch.Tensor):
+            import numpy as np
+            mean_np = np.mean(X, axis=0, dtype=X.dtype)
+            scale_np = np.std(X, axis=0, dtype=X.dtype)
+
+            if np.ndim(scale_np) == 0:
+                scale_np = np.array([scale_np])
+
+            # Avoid division by zero
+            scale_np[scale_np == 0] = 1
+
+            self.mean_torch = torch.as_tensor(mean_np)
+            self.scale_torch = torch.as_tensor(scale_np)
+
+            return self
 
         self.mean_torch = torch.mean(X, dim=0, dtype=X.dtype).to(X.device)
         self.scale_torch = torch.std(X, dim=0, correction=0).to(X.dtype).to(X.device)
