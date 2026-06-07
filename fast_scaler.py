@@ -29,7 +29,7 @@ class FastScaler:
             return self
 
         self.mean_torch = torch.mean(X, dim=0, dtype=X.dtype).to(X.device)
-        self.scale_torch = torch.std(X, dim=0, correction=0).to(X.dtype).to(X.device)
+        self.scale_torch = torch.std(X, dim=0).to(X.dtype).to(X.device)
 
         if self.scale_torch.dim() == 0:
             self.scale_torch = self.scale_torch.unsqueeze(0)

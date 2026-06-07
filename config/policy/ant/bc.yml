@@ -22,6 +22,5 @@ model_config:
   assume_io_size: True
   optimizer: 0
 
-#load_resnet: False
-#(14:20:35 train_bc.py@699 INFO) New best score 2376.199693990201 found at epoch 80
+# Expected score: 2376.20
 

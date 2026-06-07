@@ -1,5 +1,3 @@
-# Best trial: FrozenTrial(number=362, state=TrialState.COMPLETE, values=[3545.5662406149695], datetime_start=datetime.datetime(2025, 8, 14, 20, 3, 13, 557586), datetime_complete=datetime.datetime(2025, 8, 14, 20, 4, 36, 530549), params={'epochs': 237, 'k': 246, 'lookback': 13, 'decay_rate': -0.7359995486097888, 'final_neighbors_ratio': 0.593485269170173}, user_attrs={}, system_attrs={}, intermediate_values={}, distributions={'epochs': IntDistribution(high=1000, log=False, low=5, step=1), 'k': IntDistribution(high=1000, log=False, low=10, step=1), 'lookback': IntDistribution(high=50, log=False, low=2, step=1), 'decay_rate': FloatDistribution(high=0.0, log=False, low=-1.0, step=None), 'final_neighbors_ratio': FloatDistribution(high=1.0, log=False, low=0.05, step=None)}, trial_id=362, value=None)
-
 model_config:
   act_horizon: 1
   assume_io_size: true
@@ -29,3 +27,5 @@ train_config:
     0:
       lr: 0.001
       weight_decay: 0.00001
+
+# Expected score: 3545.57
