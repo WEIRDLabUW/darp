@@ -96,42 +96,7 @@ class BCExpertDataset(Dataset):
 
         return obs_combined, acts
 
-class DARPMixedExpertDataset(Dataset):
-    def __init__(self, retrieval_dataset_path, delta_state_dataset_path):
-        self.retrieval_dataset = BCExpertDataset(retrieval_dataset_path)
-        self.delta_state_dataset = BCExpertDataset(delta_state_dataset_path)
 
-        self.state_size = self.retrieval_dataset.state_size + self.delta_state_dataset.state_size
-
-        print(f"{len(self.retrieval_dataset)}, {len(self.delta_state_dataset)}")
-        assert len(self.retrieval_dataset) == len(self.delta_state_dataset)
-
-    def __len__(self):
-        return len(self.retrieval_dataset)
-
-    def __getitem__(self, idx):
-        retrieval_obs, action = self.retrieval_dataset[idx]
-        delta_state_obs, debug_action = self.delta_state_dataset[idx]
-        assert torch.equal(action, debug_action)
-        return (retrieval_obs, delta_state_obs), action
-
-    def collate_fn(self, batch):
-        obs = [item[0] for item in batch]
-        acts = torch.stack([item[1] for item in batch])
-
-        retrieval_obs, delta_state_obs = zip(*obs)
-
-        obs_combined = torch.cat((torch.stack(retrieval_obs), torch.stack(delta_state_obs)), dim=-1)
-
-        return obs_combined, acts
-
-    def __getattr__(self, name):
-        if hasattr(self.retrieval_dataset, name):
-            return getattr(self.retrieval_dataset, name)
-        if hasattr(self.delta_state_dataset, name):
-            return getattr(self.delta_state_dataset, name)
-
-        raise AttributeError(f"Neither '{self.__class__.__name__}' nor either wrapped dataset has attribute '{name}'")
 
 class ChunkingWrapper(Dataset):
     def __init__(self, obs_horizon, act_horizon, wrapped: Dataset, fill_method="repeat"):
@@ -231,20 +196,12 @@ def create_dataset(env_cfg, model_cfg) -> Tuple[Dataset, Dataset | None]:
     obs_horizon = model_cfg.get("obs_horizon", 1)
     act_horizon = model_cfg.get("act_horizon", 1)
 
-    if env_cfg.get("mixed", False):
-        train_dataset = DARPMixedExpertDataset(env_cfg['retrieval']['demo_pkl'], env_cfg['delta_state']['demo_pkl'])
+    train_dataset = BCExpertDataset(env_cfg['demo_pkl'], rgb_dataset_path=env_cfg.get('rgb_demo_pkl'))
 
-        if env_cfg['retrieval'].get("val_demo_pkl", None):
-            val_dataset = DARPMixedExpertDataset(env_cfg['retrieval']['val_demo_pkl'], env_cfg['delta_state']['val_demo_pkl'])
-        else:
-            val_dataset = None
+    if env_cfg.get("val_demo_pkl", None):
+        val_dataset = BCExpertDataset(env_cfg['val_demo_pkl'], rgb_dataset_path=env_cfg.get('val_rgb_demo_pkl'))
     else:
-        train_dataset = BCExpertDataset(env_cfg['demo_pkl'], rgb_dataset_path=env_cfg.get('rgb_demo_pkl'))
-
-        if env_cfg.get("val_demo_pkl", None):
-            val_dataset = BCExpertDataset(env_cfg['val_demo_pkl'], rgb_dataset_path=env_cfg.get('val_rgb_demo_pkl'))
-        else:
-            val_dataset = None
+        val_dataset = None
 
     if obs_horizon > 1 or act_horizon > 1:
         train_dataset = ChunkingWrapper(obs_horizon, act_horizon, train_dataset)

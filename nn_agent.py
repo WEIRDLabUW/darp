@@ -19,16 +19,8 @@ def compute_accum_distance(nearest_neighbors, max_lookbacks, obs_history, sequen
     valid_mask = (seq_indices < max_lookbacks.unsqueeze(2)) & (seq_indices < sequence_lengths.view(b, 1, 1))
     feature_mask = valid_mask.unsqueeze(3)
     
-    if distance_metric == "cosine":
-        # Calculate cosine similarity along the feature dimension (dim=3)
-        # Result shape: (B, M, T)
-        sim = torch.nn.functional.cosine_similarity(obs_expanded, matrix_slices, dim=3, eps=1e-6)
-        
-        # Convert similarity [-1, 1] to distance [0, 2]
-        distances = 1.0 - sim
-    else:
-        diff = (obs_expanded - matrix_slices) * feature_mask
-        distances = torch.sqrt(torch.sum(diff * diff, dim=3))
+    diff = (obs_expanded - matrix_slices) * feature_mask
+    distances = torch.sqrt(torch.sum(diff * diff, dim=3))
     distances[torch.isnan(distances)] = 0
     weighted_distances = distances * decay_factors[-max_seq_len:].view(1, 1, -1) * valid_mask
 
@@ -59,43 +51,18 @@ class NNAgent:
         self.policy_cfg = policy_cfg
 
         self.device = env_cfg['device']
-        self.to_device(self.device)
         self.method = NN_METHOD.from_string(policy_cfg.get('method'))
 
-        # If this is already defined, a subclass has intentionally set it
-        if not hasattr(self, 'datasets'):
-            self.datasets = {}
-            # We may use different datasets for retrieval, neighbor state, and state delta
-            if env_cfg.get('mixed', False):
-                # Lookup dict for duplicate datasets
-                paths = {}
-                for dataset in ['retrieval', 'state', 'delta_state']:
-                    path = env_cfg[dataset]['demo_pkl']
-
-                    # Check for duplicates
-                    if path in paths.keys():
-                        self.datasets[dataset] = self.datasets[paths[path]]
-                    else:
-                        paths[path] = dataset
-
-                        self.datasets[dataset] = load_and_scale_data(
-                            path,
-                            env_cfg[dataset].get('weights', []),
-                            use_torch=True,
-                            scale=False
-                        )
-            else:
-                expert_data_path = env_cfg['demo_pkl']
-                one_dataset = load_and_scale_data(
-                    expert_data_path,
-                    env_cfg.get('weights', []),
-                    ob_type=env_cfg.get('type', 'state'),
-                    use_torch=True,
-                    scale=False
-                )
-
-                for dataset in ['retrieval', 'state', 'delta_state']:
-                    self.datasets[dataset] = one_dataset
+        self.datasets = {}
+        expert_data_path = env_cfg['demo_pkl']
+        for dataset in ['retrieval', 'state', 'delta_state']:
+            one_dataset = load_and_scale_data(
+                expert_data_path,
+                env_cfg.get('weights', []),
+                ob_type=env_cfg.get('type', 'state'),
+                device=self.device
+            )
+            self.datasets[dataset] = one_dataset
 
         self.candidates = policy_cfg.get('k', 100)
         self.lookback = policy_cfg.get('lookback', 10)
@@ -112,11 +79,18 @@ class NNAgent:
 
         self.i_array = torch.arange(self.lookback, 0, -1, dtype=torch.float32)
         self.decay_factors = torch.pow(self.i_array, self.decay)
+        
+        self.to_device(self.device)
 
-class NNAgentEuclidean(NNAgent):
-    def get_neighbors(self, current_ob):
-        # Batched input [b, k, n]
+    def get_neighbors(self, current_ob, normalize=True):
+        current_ob = torch.clone(current_ob) if torch.is_tensor(current_ob) else torch.from_numpy(current_ob, dtype=torch.float32, device=self.device)
         is_batched = current_ob.dim() == 3
+
+        if normalize:
+            dataset = self.datasets['retrieval']
+            current_ob = dataset.obs_scaler.transform(current_ob)
+
+        # Batched input [b, k, n]
         batch_size = current_ob.shape[0] if is_batched else 1
         if not is_batched:
             current_ob = current_ob.unsqueeze(0)
@@ -138,10 +112,7 @@ class NNAgentEuclidean(NNAgent):
             out=self._weighted_ob_buffer
         )
 
-        if self.distance_metric == "cosine":
-            all_distances = 1 - torch.nn.functional.cosine_similarity(self.datasets['retrieval'].processed_obs_matrix.unsqueeze(0), self._weighted_ob_buffer.unsqueeze(1), dim=2)
-        else:
-            all_distances = torch.sqrt(torch.sum(torch.pow(torch.subtract(self.datasets['retrieval'].processed_obs_matrix.unsqueeze(0), self._weighted_ob_buffer.unsqueeze(1)), 2), dim=2))
+        all_distances = torch.sqrt(torch.sum(torch.pow(torch.subtract(self.datasets['retrieval'].processed_obs_matrix.unsqueeze(0), self._weighted_ob_buffer.unsqueeze(1)), 2), dim=2))
 
         # When training, don't include the state itself
         if self.method == NN_METHOD.KNN or self.method == NN_METHOD.KNN_AND_DELTA:
@@ -226,50 +197,3 @@ class NNAgentEuclidean(NNAgent):
                 dataset.flattened_act_matrix = dataset.flattened_act_matrix.to(device)
             if isinstance(dataset.processed_obs_matrix, torch.Tensor):
                 dataset.processed_obs_matrix = dataset.processed_obs_matrix.to(device)
-
-# Standard Euclidean distance, but normalize each dimension of the observation space
-class NNAgentEuclideanStandardized(NNAgentEuclidean):
-    def __init__(self, env_cfg, policy_cfg):
-        self.datasets = {}
-        # We may use different datasets for retrieval, neighbor state, and state delta
-        if env_cfg.get('mixed', False):
-            # Lookup dict for duplicate datasets
-            paths = {}
-            for dataset in ['retrieval', 'state', 'delta_state']:
-                path = env_cfg[dataset]['demo_pkl']
-
-                # Check for duplicates
-                if path in paths.keys():
-                    self.datasets[dataset] = self.datasets[paths[path]]
-                else:
-                    paths[path] = dataset
-
-                    self.datasets[dataset] = load_and_scale_data(
-                        path,
-                        env_cfg[dataset].get('weights', []),
-                        ob_type=env_cfg[dataset].get('type', 'state'),
-                        device=env_cfg['device']
-                    )
-        else:
-            expert_data_path = env_cfg['demo_pkl']
-            for dataset in ['retrieval', 'state', 'delta_state']:
-                one_dataset = load_and_scale_data(
-                    expert_data_path,
-                    env_cfg.get('weights', []),
-                    ob_type=env_cfg.get('type', 'state'),
-                    device=env_cfg['device']
-                )
-                self.datasets[dataset] = one_dataset
-
-        super().__init__(env_cfg, policy_cfg)
-
-    def get_neighbors(self, current_ob, normalize=True):
-        current_ob = torch.clone(current_ob) if torch.is_tensor(current_ob) else torch.from_numpy(current_ob, dtype=torch.float32, device=self.device)
-        is_batched = current_ob.dim() == 3
-
-        if normalize:
-            dataset = self.datasets['retrieval']
-            current_ob = dataset.obs_scaler.transform(current_ob)
-
-        return super().get_neighbors(current_ob)
-

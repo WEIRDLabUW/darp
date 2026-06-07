@@ -1,4 +1,4 @@
-from nn_agent import NN_METHOD, NNAgentEuclideanStandardized
+from nn_agent import NN_METHOD, NNAgent
 import torch.nn as nn
 import math
 import torch
@@ -10,7 +10,7 @@ class RetrievalAgent(nn.Module):
     def __init__(self, env_cfg, policy_cfg):
         super(RetrievalAgent, self).__init__()
 
-        self.agent = NNAgentEuclideanStandardized(env_cfg, policy_cfg)
+        self.agent = NNAgent(env_cfg, policy_cfg)
         self.num_neighbors = math.floor(self.agent.candidates * self.agent.final_neighbors_ratio)
         self.lookback = self.agent.lookback
     

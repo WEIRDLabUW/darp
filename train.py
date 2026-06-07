@@ -75,11 +75,6 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
     # If the process group is already initialized, something else started it and needs it, so don't kill at the end
     start_process_group = not dist.is_initialized()
     if world_size > 1:
-        # Common fixes for NCCL hangs
-        os.environ["NCCL_P2P_DISABLE"] = "1"
-        # os.environ["NCCL_IB_DISABLE"] = "1"
-        # os.environ["NCCL_DEBUG"] = "INFO"
-
         torch.cuda.set_device(rank)
         if start_process_group:
             dist.init_process_group("nccl", rank=rank, world_size=world_size, timeout=datetime.timedelta(minutes=30))
@@ -313,7 +308,10 @@ def train_model(rank, world_size, env_cfg, policy_cfg, eval_trials=100, eval_epo
             for optimizer, scaler in zip(optimizers, scalers):
                 optimizer.zero_grad(set_to_none=True)
                 scaler.scale(loss).backward()
-                #torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+
+                if is_diffusion:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+
                 scaler.step(optimizer)
                 scaler.update()
                 if is_diffusion:

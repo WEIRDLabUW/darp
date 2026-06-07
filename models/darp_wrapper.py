@@ -13,21 +13,13 @@ class DARPWrapper(ModelWrapper):
         self.wrapped = wrapped
         self.retrieval_agent = RetrievalAgent(env_cfg, policy_cfg)
 
-        self.mixed = env_cfg.get("mixed", False) and env_cfg['retrieval']['demo_pkl'] != env_cfg['delta_state']['demo_pkl']
-
-        self.input_splits = []
-        self.input_splits.append(len(self.retrieval_agent.agent.datasets['retrieval'].obs_matrix[0][0]))
-        self.input_splits.append(len(self.retrieval_agent.agent.datasets['delta_state'].obs_matrix[0][0]))
-        self.input_splits = torch.cumsum(torch.tensor(self.input_splits), dim=0)
-        logger.info(f"DARP input splits: {self.input_splits}")
-
         self.s_dataset = self.retrieval_agent.agent.datasets['state'].flattened_obs_matrix
         self.a_dataset = self.retrieval_agent.agent.datasets['state'].flattened_act_matrix
         self.state_size = len(self.retrieval_agent.agent.datasets['state'].flattened_obs_matrix[0])
         self.action_size = len(self.retrieval_agent.agent.datasets['state'].flattened_act_matrix[0])
-        self.delta_s_dataset = self.retrieval_agent.agent.datasets['delta_state'].flattened_obs_matrix
+        self.delta_s_dataset = self.s_dataset
         self.delta_s_size = self.delta_s_dataset.shape[-1]
-        self.delta_s_scaler = self.retrieval_agent.agent.datasets['delta_state'].obs_scaler
+        self.delta_s_scaler = self.retrieval_agent.agent.datasets['state'].obs_scaler
         self.combined_dataset = torch.cat([self.s_dataset, self.a_dataset, self.delta_s_dataset], dim=-1).contiguous()
         self.neighbor_batch = policy_cfg.get("neighbor_batch", -1)
         self.is_diffusion = kwargs.get("diffusion", False)
@@ -62,17 +54,13 @@ class DARPWrapper(ModelWrapper):
 
             if self.retrieval_agent.lookback == 1:
                 input = input.unsqueeze(dim=1)
-            if self.mixed == False:
-                input = input.repeat(1, 1, 2)
             input = input.to(self.retrieval_agent.agent.device)
             
             if self.validation:
                 all_indices.extend(indices)
 
-            assert input.shape[2] == self.input_splits[-1]
-
-            retrieval_state = input[:, :, 0:self.input_splits[0]]
-            delta_state = input[:, -1, self.input_splits[0]:self.input_splits[1]]
+            retrieval_state = input
+            delta_state = input[:, -1, :]
 
             for i in range(len(indices)):
                 indices[i] += index_offset
@@ -112,8 +100,6 @@ class DARPWrapper(ModelWrapper):
         batch_size = len(input)
         if not (self.wrapped.training or self.validation) and self.retrieval_agent.lookback == 1:
             input = input.unsqueeze(dim=1)
-        if self.mixed == False and not (self.wrapped.training or self.validation):
-            input = input.repeat(1, 1, 2)
 
         all_neighbors = []
         all_delta_state = []
@@ -138,10 +124,8 @@ class DARPWrapper(ModelWrapper):
                     else:
                         all_delta_state.append(self.delta_s_dataset[i])
         else:
-            assert input.shape[2] == self.input_splits[-1]
-
-            retrieval_state = input[:, :, 0:self.input_splits[0]]
-            delta_state = input[:, -self.obs_horizon:, self.input_splits[0]:self.input_splits[1]]
+            retrieval_state = input
+            delta_state = input[:, -self.obs_horizon:]
             if delta_state.shape[1] < self.obs_horizon:
                 padding_needed = self.obs_horizon - delta_state.shape[1]
                 padding = delta_state[:, 0].unsqueeze(1).repeat(1, padding_needed, 1)

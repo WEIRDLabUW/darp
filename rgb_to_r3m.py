@@ -1,12 +1,11 @@
 import pickle
 from argparse import ArgumentParser
-from tensorflow_datasets.core.features import image_feature
 import torch
 import numpy as np
 import torch.nn as nn
 
 from constants import RESNET_SIZE
-from datasets import BCExpertDataset, ChunkingWrapper
+from datasets import BCExpertDataset
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_default_dtype(torch.float32)
@@ -18,11 +17,11 @@ parser.add_argument("rgb_path")
 parser.add_argument("output_path")
 parser.add_argument("--prop", action="store_true", default=False)
 
-NUM_VIEWPOINTS = 4
-
 args, _ = parser.parse_known_args()
 
 data = pickle.load(open(args.rgb_path, 'rb'))
+NUM_VIEWPOINTS = 4
+print(f"NUM_VIEWPOINTS={NUM_VIEWPOINTS}")
 
 print("Getting chunked data...")
 dataset = BCExpertDataset(args.rgb_path)

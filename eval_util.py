@@ -127,23 +127,8 @@ def get_processed_obs(observation, frame, env, model, config, obs_type):
             return torch.as_tensor(np.hstack([proprio_state, cv2.resize(frame, (84, 84)).flatten()]), device=device, dtype=torch.float32)
 
 def get_action_from_obs_batched(config, model, envs, observations, frames, obs_history=None):
-    if config.get('mixed'):
-        obs = {}
-        processed_obs_types = {}
-        for dataset in ['retrieval', 'delta_state']:
-            obs_type = config[dataset]['type']
-            if obs_type not in processed_obs_types.keys():
-                obs[dataset] = get_processed_obs(observations, frames, envs, model, config, obs_type)
-
-                processed_obs_types[obs_type] = dataset
-            else:
-                obs[dataset] = (obs[processed_obs_types[obs_type]]).detach().clone()
-
-        obs = torch.hstack((obs['retrieval'], obs['delta_state']))
-    else:
-        obs_type = config['type']
-        
-        obs = get_processed_obs(observations, frames, envs, model, config, obs_type)
+    obs_type = config['type']
+    obs = get_processed_obs(observations, frames, envs, model, config, obs_type)
 
     if hasattr(model, "get_action"):
         actions = model.get_action(obs, curr_rgb_obs=cv2.resize(frame, (224, 224), cv2.INTER_AREA).flatten()).squeeze()
