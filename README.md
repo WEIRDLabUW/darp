@@ -9,7 +9,9 @@ To install, just run `./scripts/create_env.sh`. This will create a new conda env
 
 See `./scripts/reproduce_mujoco.sh` for all necessary code to reproduce BC and DARP results for the MuJoCo experiments in the paper. For MuJoCo tasks, we provide the data for you. However, if you want to run Robosuite benchmarks, you'll have to generate the data yourself. See MimicGen's documentation for more information on that: https://mimicgen.github.io/docs/introduction/overview.html.
 
-We provide scripts to turn MimicGen's .hdf5 file to a dataset usable by this codebase: see `hdf5_to_d4rl.py`. We also provide scripts to turn these demonstrations into a dataset of RGB images, and another script to turn those into R3M features.
+Our low-dim policies were trained on 2 NVIDIA L40s. We cannot promise exact reproduction of results if different hardware is used due to differing low-level implementations. However, you should still see DARP substantially outperforming BC.
+
+We provide scripts to turn MimicGen's .hdf5 file to a dataset usable by this codebase: see `hdf5_to_d4rl.py`. We also provide scripts to turn these demonstrations into a dataset of RGB images (`robosuite_state_to_rgb.py`), and another script to turn those into R3M features (`rgb_to_r3m.py`).
 
 
 # Data Format
