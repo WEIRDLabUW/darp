@@ -28,5 +28,4 @@ train_config:
       lr: 0.01
       weight_decay: 0.000001
 
-#[I 2025-08-22 02:51:59,827] Trial 177 finished with value: 0.63 and parameters: {'epochs': 135, 'k': 598, 'lookback': 49, 'decay_rate': -0.6600833911421093, 'final_neighbors_ratio': 0.4130011536375388}. Best is trial 177 with value: 0.63.
-
+# Expected score: 0.63

@@ -22,6 +22,5 @@ model_config:
   assume_io_size: True
   optimizer: 0
 
-#(15:35:32 nn_eval.py@466 INFO) mean 0.37, std 0.48
-#(15:35:32 train_bc.py@699 INFO) New best score 0.37 found at epoch 140
+# Expected score: 0.37
 
